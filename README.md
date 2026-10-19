@@ -7,17 +7,17 @@ On-device SDK (browser, Node, edge) for **CT0 / alias3-micro-1026** running as O
 - **System 2 — `generate()` / `Chat`**: autoregressive generation (streaming).
 - **Gate**: escalate from System 1 to System 2 when confidence is below a threshold.
 
-By default it drives the **decode-only recurrent graph** (`real_decode_fx_int4`, ~3.3 GB) — the
-graph that actually fits the browser's ~4 GB WASM cap and decodes at O(1)/token. It does **not**
-require the transformers.js model-support PR to be merged.
+By default it drives the **decode-only recurrent graph** `real_decode_gbq_int4` (~2.73 GB) — the one
+that fits the browser's ~4 GB WASM cap and decodes at O(1)/token. **Requires `onnxruntime-web` ≥ 1.30**
+(earlier versions miscompute quantized ops on WebGPU). No transformers.js PR needed.
 
-Model weights: **[eduardoworrel/ct0-alias3-micro-onnx](https://huggingface.co/eduardoworrel/ct0-alias3-micro-onnx)**
+Weights: **[eduardoworrel/ct0-alias3-micro-onnx](https://huggingface.co/eduardoworrel/ct0-alias3-micro-onnx)**
 (ONNX export of [aliasrobotics/alias3-micro-1026](https://huggingface.co/aliasrobotics/alias3-micro-1026) — all model credit to Alias Robotics).
 
 ## Install
 
 ```bash
-npm i ct0-edge @huggingface/transformers onnxruntime-web
+npm i ct0-edge @huggingface/transformers "onnxruntime-web@^1.30"
 ```
 
 ## Use
@@ -33,30 +33,28 @@ const p = await ct0.decide("path: /etc/cron.d/x\ncontent: * * * * * curl http://
 console.log("P(yes) =", p);
 
 // Gate + System 2
-if (Math.abs(2 * p - 1) < 0.6) {                 // low confidence → escalate
+if (Math.abs(2 * p - 1) < 0.6) {
   for await (const piece of ct0.generate("Explain the reasoning.")) process.stdout.write(piece);
 }
 ```
 
-## Graph strategies (why decode-only)
+## Which graph (measured in Chrome / WebGPU)
 
-A 4B model must fit under the browser's ~4 GB WASM cap. We evaluated several ONNX graphs:
+A 4B model must fit under the browser's ~4 GB WASM cap. CT0's 248k-token vocab makes the embedding
+huge, so it's quantized to **int4 (GatherBlockQuantized)**:
 
-| strategy | `Scan`? | fits < 4 GB | fidelity (q4, /16) | context | browser decode |
+| graph (HF) | interface | size | fidelity¹ | browser speed | context |
 |---|---|---|---|---|---|
-| **decode-only** (default here) | no | ✓ 3.28 GB | 9/16 | unbounded | fast |
-| **two-graph** (prefill + decode) | no | ✓ 3.38 + 3.28 GB | 9/16; combined pending | unbounded | fast prefill |
-| **single_chunk** (fixed window) | no | ✓ 3.17 GB | 14/16 | capped 64 | fast |
-| **scan** (`generate()`, any chunk) | yes | ✓ 3.17 GB\* | 14/16 | unbounded | slow |
-| int8 weight-only | yes | ✗ 4.95 GB | 16/16 | unbounded | — |
+| **`real_decode_gbq_int4`** (default) | custom (this lib) | **2.73 GB** | 9/16 | **~10 tok/s** | unbounded (O(1)) |
+| **`scan_gbq_int4`** | standard `generate()` | 2.99 GB | 9/16 | ~1.3 tok/s | unbounded (`Scan`) |
+| `model_q4` / `model_fp16` | standard | 4.78 / 8.4 GB | 14–16/16 | — (Node only) | unbounded |
 
-**Key finding:** at q4 (the quant that fits the browser) fidelity is ~14/16 regardless of scan vs
-non-scan or chunk size — the int4 error dominates; 16/16 only shows up at int8/fp16, which don't fit.
-So the strategies differ on **speed and context**, not fidelity.
+¹ greedy match vs fp32 over 16 tokens. **Trade-off:** fitting <4 GB needs the int4 embedding, which
+costs fidelity (9/16); the 14–16/16 variants keep the embedding wide and don't fit the browser.
 
-\* The scan `model_q4.onnx` currently published on HF is **4.78 GB and does _not_ fit the browser**;
-the fitting 3.17 GB q4f16-b64 scan build is a research result, not yet uploaded. Browser **tok/s** is
-a pending WebGPU measurement.
+**Recipe:** `GatherBlockQuantized` embedding + `MatMulNBits` matmuls (`onnxruntime.quantization`),
+on top of the optimum-onnx `qwen3_5` export. The default transformers.js q4 flow doesn't quantize the
+embedding `Gather`, which is why large-vocab models otherwise overflow the browser.
 
 ## Related
 
