@@ -69,7 +69,7 @@ export class CT0 {
       env.allowRemoteModels = false; env.allowLocalModels = true; env.localModelPath = base;
       tok = await AutoTokenizer.from_pretrained("tok");
     }
-    const file = (opts.decodeModel ?? "onnx/real_decode_fx_int4.onnx");
+    const file = (opts.decodeModel ?? "onnx/real_decode_gbq_int4.onnx");
     const dataName = file.replace(/[^/]*$/, m => m) + ".data"; // real_decode_fx_int4.onnx.data (ao lado)
     const dataPath = file + ".data";
     status("carregando grafo decode-only (WebGPU)…");
