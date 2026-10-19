@@ -1,7 +1,7 @@
-# ct0-web
+# ct0-edge
 
-Browser/Node SDK for **CT0 / alias3-micro-1026** running as ONNX over
-[onnxruntime-web](https://onnxruntime.ai/) (WebGPU). One model, both modes:
+On-device SDK (browser, Node, edge) for **CT0 / alias3-micro-1026** running as ONNX over
+[onnxruntime-web](https://onnxruntime.ai/) (WebGPU / WASM). One model, both modes:
 
 - **System 1 — `decide()`**: a yes/no security decision in a single forward (reads logits, no tokens generated).
 - **System 2 — `generate()` / `Chat`**: autoregressive generation (streaming).
@@ -16,13 +16,13 @@ Model weights: **[eduardoworrel/ct0-alias3-micro-onnx](https://huggingface.co/ed
 ## Install
 
 ```bash
-npm i ct0-web @huggingface/transformers onnxruntime-web
+npm i ct0-edge @huggingface/transformers onnxruntime-web
 ```
 
 ## Use
 
 ```js
-import { CT0 } from "ct0-web";
+import { CT0 } from "ct0-edge";
 
 const ct0 = await CT0.load({
   baseUrl: "https://huggingface.co/eduardoworrel/ct0-alias3-micro-onnx/resolve/main/",

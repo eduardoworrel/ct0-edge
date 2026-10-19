@@ -1,7 +1,7 @@
 {
-  "name": "ct0-web",
+  "name": "ct0-edge",
   "version": "0.1.0",
-  "description": "Browser/Node SDK for CT0 (alias3-micro-1026) ONNX — System 1 (decide), gate, and System 2 (generate) over onnxruntime-web (WebGPU).",
+  "description": "On-device (browser, Node, edge) SDK for CT0 (alias3-micro-1026) ONNX — System 1 (decide), gate, and System 2 (generate) over onnxruntime-web (WebGPU/WASM).",
   "type": "module",
   "main": "./dist/ct0.js",
   "module": "./dist/ct0.js",
@@ -21,7 +21,7 @@
     "onnxruntime-web": ">=1.20.0"
   },
   "keywords": ["onnx", "transformers.js", "onnxruntime-web", "webgpu", "llm", "ct0", "alias3-micro", "cybersecurity"],
-  "repository": { "type": "git", "url": "git+https://github.com/eduardoworrel/ct0-web.git" },
+  "repository": { "type": "git", "url": "git+https://github.com/eduardoworrel/ct0-edge.git" },
   "homepage": "https://huggingface.co/eduardoworrel/ct0-alias3-micro-onnx",
   "license": "MIT",
   "author": "eduardoworrel"
