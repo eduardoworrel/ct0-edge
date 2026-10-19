@@ -55,8 +55,7 @@ class CT0 {
       env.localModelPath = base;
       tok = await AutoTokenizer.from_pretrained("tok");
     }
-    const file = opts.decodeModel ?? "onnx/real_decode_gbq_int4.onnx";
-    const dataName = file.replace(/[^/]*$/, (m) => m) + ".data";
+    const file = opts.decodeModel ?? "onnx/model_q4f16_decode.onnx";
     const dataPath = file + ".data";
     status("carregando grafo decode-only (WebGPU)\u2026");
     const S = await ort.InferenceSession.create(new URL(file, base).href, {

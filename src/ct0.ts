@@ -22,7 +22,7 @@ export interface LoadOptions {
   repo?: string;
   /** URL base alternativa (modelo local); tokenizer ainda vem do repo se dado. */
   baseUrl?: string;
-  /** Nome do arquivo do grafo decode-only (default real_decode_fx_int4.onnx). */
+  /** Nome do arquivo do grafo decode-only (default onnx/model_q4f16_decode.onnx). */
   decodeModel?: string;
   onStatus?: (msg: string) => void;
 }
@@ -69,9 +69,8 @@ export class CT0 {
       env.allowRemoteModels = false; env.allowLocalModels = true; env.localModelPath = base;
       tok = await AutoTokenizer.from_pretrained("tok");
     }
-    const file = (opts.decodeModel ?? "onnx/real_decode_gbq_int4.onnx");
-    const dataName = file.replace(/[^/]*$/, m => m) + ".data"; // real_decode_fx_int4.onnx.data (ao lado)
-    const dataPath = file + ".data";
+    const file = (opts.decodeModel ?? "onnx/model_q4f16_decode.onnx");
+    const dataPath = file + ".data"; // model_q4f16_decode.onnx.data (ao lado)
     status("carregando grafo decode-only (WebGPU)…");
     const S = await ort.InferenceSession.create(new URL(file, base).href, {
       executionProviders: ["webgpu"],

@@ -7,8 +7,8 @@ On-device SDK (browser, Node, edge) for **CT0 / alias3-micro-1026** running as O
 - **System 2 — `generate()` / `Chat`**: autoregressive generation (streaming).
 - **Gate**: escalate from System 1 to System 2 when confidence is below a threshold.
 
-By default it drives the **decode-only recurrent graph** `real_decode_gbq_int4` (~2.73 GB) — the one
-that fits the browser's ~4 GB WASM cap and decodes at O(1)/token. **Requires `onnxruntime-web` ≥ 1.30**
+By default it drives the **decode-only recurrent graph** `onnx/model_q4f16_decode.onnx` (~2.73 GB) — the
+one that fits the browser's ~4 GB WASM cap and decodes at O(1)/token. **Requires `onnxruntime-web` ≥ 1.30**
 (earlier versions miscompute quantized ops on WebGPU). No transformers.js PR needed.
 
 Weights: **[eduardoworrel/ct0-alias3-micro-onnx](https://huggingface.co/eduardoworrel/ct0-alias3-micro-onnx)**
@@ -45,9 +45,12 @@ huge, so it's quantized to **int4 (GatherBlockQuantized)**:
 
 | graph (HF) | interface | size | fidelity¹ | browser speed | context |
 |---|---|---|---|---|---|
-| **`real_decode_gbq_int4`** (default) | custom (this lib) | **2.73 GB** | 9/16 | **~10 tok/s** | unbounded (O(1)) |
-| **`scan_gbq_int4`** | standard `generate()` | 2.99 GB | 9/16 | ~1.3 tok/s | unbounded (`Scan`) |
+| **`model_q4f16_decode`** (default) | custom (this lib) | **2.73 GB** | 9/16 | **~10 tok/s** | unbounded (O(1)) |
+| **`model_q4f16`** | standard `generate()` / transformers.js | 2.99 GB | 9/16 | ~1.3 tok/s | unbounded (`Scan`) |
 | `model_q4` / `model_fp16` | standard | 4.78 / 8.4 GB | 14–16/16 | — (Node only) | unbounded |
+
+`model_q4f16` is the standard transformers.js file (`dtype:"q4f16"`); `model_q4f16_decode` is the same int4
+weights in a custom decode-only graph this lib drives directly.
 
 ¹ greedy match vs fp32 over 16 tokens. **Trade-off:** fitting <4 GB needs the int4 embedding, which
 costs fidelity (9/16); the 14–16/16 variants keep the embedding wide and don't fit the browser.
