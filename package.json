@@ -11,8 +11,10 @@
     "./webllm": "./dist/webllm.js"
   },
   "files": [
-    "dist",
-    "src",
+    "dist/ct0.js",
+    "dist/webllm.js",
+    "src/ct0.ts",
+    "src/webllm.ts",
     "README.md",
     "LICENSE"
   ],
