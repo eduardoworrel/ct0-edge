@@ -9,8 +9,8 @@ On-device SDK (browser, Node, edge) for **CT0 / alias3-micro-1026** running as O
 
 Calls are **stateless, single-turn**: each builds its own prompt from a fresh state, no session carried between calls.
 
-By default it drives the **decode-only recurrent graph** `onnx/model_q4f16_decode.onnx` (~2.73 GB) — the
-one that fits the browser's ~4 GB WASM cap and decodes at O(1)/token. **Requires `onnxruntime-web` ≥ 1.30**
+By default it drives the **decode-only recurrent graph** `onnx/model_q4f16_decode.onnx` (≈2.73 GB) — the
+one that fits the browser's ≈4 GB WASM cap and decodes at O(1)/token. **Requires `onnxruntime-web` ≥ 1.30**
 (earlier versions miscompute quantized ops on WebGPU). No transformers.js PR needed.
 
 Weights: **[eduardoworrel/ct0-alias3-micro-onnx](https://huggingface.co/eduardoworrel/ct0-alias3-micro-onnx)**
@@ -42,13 +42,13 @@ console.log("P(yes) =", p);
 
 ## Which graph (measured in Chrome / WebGPU)
 
-A 4B model must fit under the browser's ~4 GB WASM cap. CT0's 248k-token vocab makes the embedding
+A 4B model must fit under the browser's ≈4 GB WASM cap. CT0's 248k-token vocab makes the embedding
 huge, so it's quantized to **int4 (GatherBlockQuantized)**:
 
 | graph (HF) | interface | size | fidelity¹ | browser speed | context |
 |---|---|---|---|---|---|
-| **`model_q4f16_decode`** (default) | custom (this lib) | **2.73 GB** | 9/16 | **~10 tok/s** | unbounded (O(1)) |
-| **`model_q4f16`** | standard `generate()` / transformers.js | 2.99 GB | 9/16 | ~1.3 tok/s | unbounded (`Scan`) |
+| **`model_q4f16_decode`** (default) | custom (this lib) | **2.73 GB** | 9/16 | **≈10 tok/s** | unbounded (O(1)) |
+| **`model_q4f16`** | standard `generate()` / transformers.js | 2.99 GB | 9/16 | ≈1.3 tok/s | unbounded (`Scan`) |
 | `model_q4` / `model_fp16` | standard | 4.78 / 8.4 GB | 14–16/16 | — (Node only) | unbounded |
 
 `model_q4f16` is the standard transformers.js file (`dtype:"q4f16"`); `model_q4f16_decode` is the same int4
