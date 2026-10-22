@@ -1,15 +1,13 @@
 {
   "name": "ct0-edge",
   "version": "0.3.0",
-  "description": "On-device SDK for CT0 (alias3-micro-1026): System-1 decide() over logits, the ct0-cai browser red/blue orchestrator, and ct0-browser DOM/runtime tools \u2014 ONNX (onnxruntime-web) or any injected engine (e.g. WebLLM).",
+  "description": "On-device SDK for CT0 (alias3-micro-1026): System-1 decide() over logits + System-2 generate(), on ONNX (onnxruntime-web) or WebLLM (MLC).",
   "type": "module",
   "main": "./dist/ct0.js",
   "module": "./dist/ct0.js",
   "types": "./src/ct0.ts",
   "exports": {
     ".": "./dist/ct0.js",
-    "./browser": "./dist/browser.js",
-    "./cai": "./dist/cai.js",
     "./webllm": "./dist/webllm.js"
   },
   "files": [
@@ -19,7 +17,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "npx esbuild src/ct0.ts --format=esm --target=es2022 --outfile=dist/ct0.js && npx esbuild src/browser.ts --bundle --format=esm --target=es2022 --outfile=dist/browser.js && npx esbuild src/cai.ts --bundle --format=esm --target=es2022 --outfile=dist/cai.js && npx esbuild src/webllm.ts --bundle --format=esm --target=es2022 --outfile=dist/webllm.js"
+    "build": "npx esbuild src/ct0.ts --format=esm --target=es2022 --outfile=dist/ct0.js && npx esbuild src/webllm.ts --bundle --format=esm --target=es2022 --outfile=dist/webllm.js"
   },
   "peerDependencies": {
     "@huggingface/transformers": ">=3.0.0",

@@ -1,2 +1,6 @@
 test/
 deploy.sh
+src/cai.ts
+src/browser.ts
+dist/cai.js
+dist/browser.js
