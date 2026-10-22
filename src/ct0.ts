@@ -24,6 +24,9 @@ export interface LoadOptions {
   baseUrl?: string;
   /** Nome do arquivo do grafo decode-only (default onnx/model_q4f16_decode.onnx). */
   decodeModel?: string;
+  /** Teto saudável de tokens de entrada no navegador (default 2048; ort-web/WebGPU
+   *  estoura ~4000 tok com "unaligned accesses"). Medido: sem degradação até ~2k. */
+  maxSafeTokens?: number;
   onStatus?: (msg: string) => void;
 }
 export interface GenerateOptions {
@@ -51,7 +54,10 @@ function mulberry32(seed: number) {
 }
 
 export class CT0 {
+  /** Contexto nominal do modelo (recorrência linear O(1)). */
   readonly maxContext = 262144;
+  /** Teto SAUDÁVEL de tokens de entrada no navegador (ort-web/WebGPU). */
+  maxSafeTokens = 2048;
   private tok: any; private S: any; private NS: number; private SP: Spec[];
   private yesIds: number[] = []; private noIds: number[] = [];
   private constructor(tok: any, S: any, SP: Spec[]) { this.tok = tok; this.S = S; this.SP = SP; this.NS = SP.length; }
@@ -77,6 +83,7 @@ export class CT0 {
       externalData: [{ path: dataPath.split("/").pop()!, data: new URL(dataPath, base).href }],
     });
     const ct0 = new CT0(tok, S, buildSpecs());
+    if (opts.maxSafeTokens) ct0.maxSafeTokens = opts.maxSafeTokens;
     const firstId = (s: string) => { const a = ct0.ids(s); return a.length ? a[0] : null; };
     ct0.yesIds = [...new Set(["Yes", " Yes", "yes", " yes", "YES"].map(firstId).filter((x): x is number => x != null))];
     ct0.noIds = [...new Set(["No", " No", "no", " no", "NO"].map(firstId).filter((x): x is number => x != null))];
@@ -85,6 +92,73 @@ export class CT0 {
   }
 
   private ids(text: string): number[] { return this.tok(text, { add_special_tokens: false }).input_ids.tolist()[0].map(Number); }
+
+  /** Conta tokens de um texto. */
+  countTokens(text: string): number { return this.ids(text).length; }
+
+  /** Trunca `text` para caber em `maxSafeTokens - reserve` (mantém início + fim,
+   *  onde a informação costuma estar). Chama `onTrim` se cortar. */
+  fitContext(text: string, opts: { reserve?: number; onTrim?: (i: { original: number; kept: number }) => void } = {}): string {
+    const reserve = opts.reserve ?? 300;
+    const budget = Math.max(64, this.maxSafeTokens - reserve);
+    const toks = this.ids(text);
+    if (toks.length <= budget) return text;
+    const head = Math.floor(budget * 0.6), tail = budget - head;
+    const kept = [...toks.slice(0, head), ...toks.slice(toks.length - tail)];
+    opts.onTrim?.({ original: toks.length, kept: budget });
+    return this.tok.decode(kept, { skip_special_tokens: true });
+  }
+
+  /**
+   * chunk-watch: varre um texto GRANDE (que estoura maxSafeTokens — ex. HTML gigante)
+   * em janelas deslizantes e roda System 1 (`decide`) por chunk, acumulando as regiões
+   * suspeitas. Cobre documentos que não cabem no contexto, sem truncar/perder sinal.
+   */
+  async scanLong(text: string, question: string,
+    opts: { windowTokens?: number; overlapTokens?: number; threshold?: number; onChunk?: (i: number, p: number, total: number) => void } = {}
+  ): Promise<{ chunks: number; max: number; hits: { i: number; start: number; p: number; preview: string }[]; flagged: { i: number; start: number; p: number; preview: string }[] }> {
+    const win = opts.windowTokens ?? (this.maxSafeTokens - 400);
+    const overlap = opts.overlapTokens ?? 128;
+    const thr = opts.threshold ?? 0.5;
+    const toks = this.ids(text);
+    const hits: { i: number; start: number; p: number; preview: string }[] = [];
+    if (toks.length <= win) { const p = await this.decide(text, question); opts.onChunk?.(0, p, 1); hits.push({ i: 0, start: 0, p, preview: text.slice(0, 100) }); }
+    else {
+      const total = Math.ceil((toks.length - overlap) / (win - overlap));
+      let i = 0, idx = 0;
+      while (i < toks.length) {
+        const chunk = this.tok.decode(toks.slice(i, i + win), { skip_special_tokens: true });
+        const p = await this.decide(chunk, question);
+        hits.push({ i: idx, start: i, p, preview: chunk.slice(0, 100) });
+        opts.onChunk?.(idx, p, total); idx++; i += (win - overlap);
+      }
+    }
+    return { chunks: hits.length, max: Math.max(...hits.map(h => h.p)), hits, flagged: hits.filter(h => h.p >= thr) };
+  }
+
+  /** Visão LIMPA e condensada de uma página (para agentes de segurança): forms,
+   *  inputs, botões, links, comentários HTML, inline scripts e localStorage —
+   *  onde vulnerabilidades/segredos costumam se esconder, usando pouco contexto. */
+  static inspectPage(doc: any): any {
+    const q = (s: string, f: (e: any) => any) => [...doc.querySelectorAll(s)].map(f);
+    const comments: string[] = []; const w = doc.createTreeWalker(doc.body || doc.documentElement, 128 /* SHOW_COMMENT */);
+    while (w.nextNode()) comments.push((w.currentNode.nodeValue || "").trim().slice(0, 180));
+    const store: Record<string, string> = {};
+    try { const ls = (doc.defaultView || window).localStorage; for (let i = 0; i < ls.length; i++) { const k = ls.key(i)!; store[k] = (ls.getItem(k) || "").slice(0, 80); } } catch {}
+    return {
+      title: doc.title, url: (doc.defaultView || {}).location?.search || "/",
+      forms: q("form", (f: any) => ({ action: f.getAttribute("action"), method: f.method, inputs: [...f.querySelectorAll("input")].map((i: any) => ({ name: i.name, type: i.type, value: i.type === "hidden" ? i.value : undefined, autocomplete: i.autocomplete })) })),
+      inputs: q("input,textarea", (i: any) => ({ sel: i.id ? "#" + i.id : i.name ? `[name=${i.name}]` : i.tagName.toLowerCase(), type: i.type })),
+      buttons: q("button", (b: any) => ({ sel: b.id ? "#" + b.id : null, text: b.textContent.trim() })),
+      links: q("a[href]", (a: any) => a.getAttribute("href")),
+      // texto visível notável (stack traces, banners de erro/debug) — onde credenciais costumam vazar
+      texts: q("pre,code,[class*='debug'],[class*='error'],[class*='stack']", (e: any) => (e.textContent || "").trim().slice(0, 300)).filter(Boolean),
+      comments, inlineScripts: q("script:not([src])", (s: any) => s.textContent.trim().slice(0, 220)).filter(Boolean), localStorage: store,
+    };
+  }
+
+  /** HTML cru do body (fallback quando a segurança exige ver o markup completo). */
+  static pageSource(doc: any, max = 2500): string { return (doc.body || doc.documentElement).outerHTML.slice(0, max); }
   private initState(): Record<string, any> {
     const st: Record<string, any> = {};
     for (let i = 0; i < this.NS; i++) {
@@ -114,11 +188,21 @@ export class CT0 {
     return t + (think ? "<think>\n" : "<think>\n\n</think>\n\n");
   }
 
+  /** Single-turn generation: wraps `prompt` in a chat turn (System 2). */
   async *generate(prompt: string, opts: GenerateOptions = {}): AsyncGenerator<string> {
-    const o = { maxNewTokens: 512, temperature: 0.7, topP: 0.9, topK: 40, repetitionPenalty: 1.1, seed: 0, think: true, ...opts };
+    yield* this.stream(this.turn(prompt, opts.system, opts.think ?? true), opts);
+  }
+
+  /**
+   * Low-level streaming from a RAW prompt (no chat-turn wrapping). Use this to
+   * drive multi-turn / agentic (ReAct) loops where you build the full prompt
+   * yourself. `temperature <= 0` ⇒ greedy (deterministic tool calls).
+   */
+  async *stream(prompt: string, opts: GenerateOptions = {}): AsyncGenerator<string> {
+    const o = { maxNewTokens: 512, temperature: 0.7, topP: 0.9, topK: 40, repetitionPenalty: 1.1, seed: 0, ...opts };
     const rand = mulberry32(o.seed);
     let st = this.initState(), pos = 0, last: any = null;
-    for (const t of this.ids(this.turn(prompt, o.system, o.think))) { ({ logits: last, st } = await this.step(t, pos, st)); pos++; }
+    for (const t of this.ids(prompt)) { ({ logits: last, st } = await this.step(t, pos, st)); pos++; }
     const gen: number[] = [];
     for (let s = 0; s < o.maxNewTokens; s++) {
       if (opts.signal?.aborted) break;
