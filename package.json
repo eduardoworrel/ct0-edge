@@ -1,6 +1,6 @@
 {
   "name": "ct0-edge",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "On-device SDK for CT0 (alias3-micro-1026): System-1 decide() over logits + System-2 generate(), on ONNX (onnxruntime-web) or WebLLM (MLC).",
   "type": "module",
   "main": "./dist/ct0.js",
