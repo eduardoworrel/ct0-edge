@@ -64,5 +64,19 @@ console.log("\nos bundles estao atualizados em relacao ao fonte?");
   }
 }
 
+
+console.log("\narquivos duplicados entre repos nao divergiram:");
+{
+  // systemone.ts e headdecide.ts existem em ct0-edge E em cai-lite. O cai-lite precisa deles
+  // (headdecide importa systemone); o ct0-edge tambem (sao o SDK). Para nao divergirem em
+  // silencio, comparamos o conteudo.
+  const pairs = ["systemone.ts", "headdecide.ts"];
+  for (const f of pairs) {
+    const a = `/Users/pc/cai/ct0-lib/src/${f}`;
+    const b = `/Users/pc/cai/cai-lite/src/${f}`;
+    if (!existsSync(a) || !existsSync(b)) { ok(false, `${f}: ausente num dos repos`); continue; }
+    ok(readFileSync(a, "utf8") === readFileSync(b, "utf8"), `${f} identico em ct0-edge e cai-lite`);
+  }
+}
 console.log(`\n=== ${pass} pass · ${fail} fail ===`);
 process.exit(fail ? 1 : 0);
