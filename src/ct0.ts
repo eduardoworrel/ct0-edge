@@ -215,7 +215,22 @@ export class CT0 {
     let hidden: Float32Array | undefined;
     if (hiddenOut && r[hiddenOut]) {
       const t: any = r[hiddenOut];
-      hidden = t.data instanceof Float32Array ? t.data : Float32Array.from(t.data);
+      (this as any).__lastHiddenTensor = t;
+      // O hidden e float16 ([1,1,2560]). `Float32Array.from(Uint16Array)` faz CAST NUMERICO
+      // (0x3c00 -> 15360), nao decodifica fp16 — os valores viram lixo/Inf e o head devolve NaN.
+      // Medido no browser: finite=0 de 2560. Decodifica bit a bit quando o tipo nao for float32.
+      if (t.data instanceof Float32Array) hidden = t.data;
+      else if (t.type === "float16" || t.data instanceof Uint16Array) {
+        const u = t.data as Uint16Array;
+        hidden = new Float32Array(u.length);
+        for (let i = 0; i < u.length; i++) {
+          const h = u[i];
+          const s = (h & 0x8000) ? -1 : 1, e = (h & 0x7c00) >> 10, f = h & 0x03ff;
+          hidden[i] = e === 0 ? s * Math.pow(2, -14) * (f / 1024)
+                    : e === 0x1f ? (f ? NaN : s * Infinity)
+                    : s * Math.pow(2, e - 15) * (1 + f / 1024);
+        }
+      } else hidden = Float32Array.from(t.data as any);
     }
     return { logits: r.logits, st: ns, hidden };
   }
