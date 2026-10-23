@@ -1,6 +1,7 @@
 // src/webllm.ts
 function webllmModel(engine, opts = {}) {
   const stop = opts.stop ?? ["<|im_end|>"];
+  const thinkTail = opts.noThink ? "/no_think\n" : "";
   return {
     countTokens: (t) => t.length / 4 | 0,
     fitContext: (p) => p,
@@ -26,17 +27,19 @@ Answer Yes or No.<|im_end|>
 
 </think>
 
-`;
+` + thinkTail;
       try {
         const r = await engine.completions.create({ prompt, max_tokens: 1, temperature: 0, logprobs: true, top_logprobs: 5 });
         const tl = r.choices?.[0]?.logprobs?.content?.[0]?.top_logprobs || r.choices?.[0]?.logprobs?.top_logprobs;
         if (tl && tl.length) {
           let y = -1e9, n = -1e9;
           for (const e of tl) {
-            const t = (e.token || "").trim().toLowerCase();
+            const t = String(e.token || "").trim().toLowerCase().replace(/[^a-z]/g, "");
             if (t === "yes") y = Math.max(y, e.logprob);
             if (t === "no") n = Math.max(n, e.logprob);
           }
+          if (y > -1e8 && n === -1e9) n = Math.min(...tl.map((e) => e.logprob));
+          if (n > -1e8 && y === -1e9) y = Math.min(...tl.map((e) => e.logprob));
           if (y > -1e8 || n > -1e8) {
             const m = Math.max(y, n);
             return Math.exp(y - m) / (Math.exp(y - m) + Math.exp(n - m));

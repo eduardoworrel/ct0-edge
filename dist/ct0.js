@@ -48,8 +48,8 @@ class CT0 {
     let tok, base;
     if (opts.repo) {
       env.allowRemoteModels = true;
-      env.allowLocalModels = true;
-      tok = await AutoTokenizer.from_pretrained(opts.repo);
+      env.allowLocalModels = false;
+      tok = await AutoTokenizer.from_pretrained(opts.repo, { local_files_only: false });
       base = opts.baseUrl ?? `https://huggingface.co/${opts.repo}/resolve/main/`;
     } else {
       base = opts.baseUrl ?? new URL(".", import.meta.url).href;
@@ -59,13 +59,32 @@ class CT0 {
       tok = await AutoTokenizer.from_pretrained("tok");
     }
     const file = opts.decodeModel ?? "onnx/model_q4f16_decode.onnx";
-    const dataPath = file + ".data";
+    const dataPath = opts.externalDataFile ?? file + ".data";
     status("carregando grafo decode-only (WebGPU)\u2026");
-    const S = await ort.InferenceSession.create(new URL(file, base).href, {
+    const isLocal = /^(\.\/|\/)/.test(dataPath) || /^(\.\/|\/)/.test(file);
+    const modelUrl = isLocal ? new URL(file, location.href).href : new URL(file, base).href;
+    const dataUrl = isLocal ? new URL(dataPath, location.href).href : new URL(dataPath, base).href;
+    const declared = (() => {
+      try {
+        const t = (S0) => S0;
+        return dataPath.split("/").pop();
+      } catch {
+        return dataPath.split("/").pop();
+      }
+    })();
+    const S = await ort.InferenceSession.create(modelUrl, {
       executionProviders: ["webgpu"],
-      externalData: [{ path: dataPath.split("/").pop(), data: new URL(dataPath, base).href }]
+      externalData: [{ path: declared, data: dataUrl }]
     });
     const ct0 = new CT0(tok, S, buildSpecs());
+    const outNames = S.outputNames;
+    if (outNames) {
+      const h = outNames.find((n) => n === "type_as_80" || /hidden/i.test(n));
+      if (h) {
+        ct0.hiddenOutput = h;
+        status("hidden state disponivel: " + h);
+      }
+    }
     if (opts.maxSafeTokens) ct0.maxSafeTokens = opts.maxSafeTokens;
     const firstId = (s) => {
       const a = ct0.ids(s);
@@ -177,16 +196,28 @@ class CT0 {
     }
     return st;
   }
-  async step(tid, pos, st) {
+  async step(tid, pos, st, hiddenOut) {
     const feed = {
       input_ids: new ort.Tensor("int64", BigInt64Array.from([BigInt(tid)]), [1, 1]),
       cache_position: new ort.Tensor("int64", BigInt64Array.from([BigInt(pos)]), [1]),
       ...st
     };
-    const r = await this.S.run(feed);
+    let r;
+    if (hiddenOut) {
+      const names = ["logits", hiddenOut];
+      for (let i = 0; i < this.NS; i++) names.push("so" + i);
+      r = await this.S.run(feed, names);
+    } else {
+      r = await this.S.run(feed);
+    }
     const ns = {};
     for (let i = 0; i < this.NS; i++) ns["si" + i] = r["so" + i];
-    return { logits: r.logits, st: ns };
+    let hidden;
+    if (hiddenOut && r[hiddenOut]) {
+      const t = r[hiddenOut];
+      hidden = t.data instanceof Float32Array ? t.data : Float32Array.from(t.data);
+    }
+    return { logits: r.logits, st: ns, hidden };
   }
   lastRow(L) {
     const V = L.dims.at(-1), off = (L.dims.at(-2) - 1) * V, d = L.data, r = new Float32Array(V);
@@ -240,6 +271,41 @@ class CT0 {
     const mx = Math.max(...all.map((i) => L[i]));
     const Z = all.reduce((a, i) => a + Math.exp(L[i] - mx), 0);
     return this.yesIds.reduce((a, i) => a + Math.exp(L[i] - mx), 0) / Z;
+  }
+  /**
+   * Prefill completo devolvendo os hidden states que o HEAD bilinear precisa.
+   *
+   * Requer o grafo com a saida extra `type_as_80` (hidden pos-norm, [1,1,2560]).
+   * Para gerar: `python3 add_hidden_output.py` (adiciona a output ao onnx existente,
+   * logits ficam bit-identicos) e carregue com `decodeModel: "onnx/model_q4f16_decode_head.onnx"`.
+   *
+   * Posicao do `<decide>` e a ultima posicao seguem a especificacao medida (EVIDENCE §20c):
+   *   q le no ultimo token de `<decide>`; k le na ultima posicao do prompt.
+   */
+  async prefillHiddens(prompt) {
+    const hiddenName = this.hiddenOutput;
+    if (!hiddenName) return null;
+    const ids = this.ids(prompt);
+    let st = this.initState(), pos = 0;
+    let atDecide = null;
+    let atLast = null;
+    const atOpts = [];
+    const mid = this.ids("<decide>");
+    const tail2 = mid.slice(-2);
+    const optEnd = this.ids("</opt>").slice(-2);
+    for (let i = 0; i < ids.length; i++) {
+      const r = await this.step(ids[i], pos, st, hiddenName);
+      st = r.st;
+      const h = r.hidden;
+      if (h) {
+        if (i >= 1 && ids[i] === tail2[1] && ids[i - 1] === tail2[0]) atDecide = h;
+        if (i >= 1 && ids[i] === optEnd[1] && ids[i - 1] === optEnd[0]) atOpts.push(h);
+        if (i === ids.length - 1) atLast = h;
+      }
+      pos++;
+    }
+    if (!atDecide || !atLast) return null;
+    return { atDecide, atLast, atOpts };
   }
   sample(logits, gen, rand, o) {
     const { temperature: temp, topP, topK, repetitionPenalty: rep } = o;

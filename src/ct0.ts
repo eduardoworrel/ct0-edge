@@ -24,6 +24,9 @@ export interface LoadOptions {
   baseUrl?: string;
   /** Nome do arquivo do grafo decode-only (default onnx/model_q4f16_decode.onnx). */
   decodeModel?: string;
+  /** Nome do arquivo .data externo, se for diferente de `decodeModel + ".data"`.
+   *  Variantes do mesmo grafo (ex. com hidden state) reusam o mesmo .data. */
+  externalDataFile?: string;
   /** Teto saudável de tokens de entrada no navegador (default 2048; ort-web/WebGPU
    *  estoura ~4000 tok com "unaligned accesses"). Medido: sem degradação até ~2k. */
   maxSafeTokens?: number;
@@ -67,8 +70,10 @@ export class CT0 {
     status("carregando tokenizer…");
     let tok: any, base: string;
     if (opts.repo) {
-      env.allowRemoteModels = true; env.allowLocalModels = true;
-      tok = await AutoTokenizer.from_pretrained(opts.repo);
+      // Prioriza o HF REMOTO: com allowLocalModels=true o transformers.js tenta ./models/<repo>/
+      // primeiro e, se o servidor responder 404 em vez de falhar, o load trava. Medido no braço D.
+      env.allowRemoteModels = true; env.allowLocalModels = false;
+      tok = await AutoTokenizer.from_pretrained(opts.repo, { local_files_only: false });
       base = opts.baseUrl ?? `https://huggingface.co/${opts.repo}/resolve/main/`;
     } else {
       base = opts.baseUrl ?? new URL(".", import.meta.url).href;
@@ -76,13 +81,34 @@ export class CT0 {
       tok = await AutoTokenizer.from_pretrained("tok");
     }
     const file = (opts.decodeModel ?? "onnx/model_q4f16_decode.onnx");
-    const dataPath = file + ".data"; // model_q4f16_decode.onnx.data (ao lado)
+    // O .data externo pode ter um nome DIFERENTE do .onnx (variantes do mesmo grafo
+    // compartilham os pesos). `externalDataFile` permite apontar para o arquivo certo;
+    // default mantem o comportamento antigo (file + ".data").
+    const dataPath = opts.externalDataFile ?? (file + ".data");
     status("carregando grafo decode-only (WebGPU)…");
-    const S = await ort.InferenceSession.create(new URL(file, base).href, {
+    // Se `externalDataFile` comecar com "./" ou "/", e um caminho LOCAL (servido ao lado da pagina)
+    // e nao deve ser resolvido contra o `base` do HF. O `path` do externalData precisa bater com o
+    // nome que o proprio .onnx declara internamente (senao o ORT procura outro arquivo).
+    const isLocal = /^(\.\/|\/)/.test(dataPath) || /^(\.\/|\/)/.test(file);
+    const modelUrl = isLocal ? new URL(file, location.href).href : new URL(file, base).href;
+    const dataUrl = isLocal ? new URL(dataPath, location.href).href : new URL(dataPath, base).href;
+    const declared = (() => {
+      try {
+        const t = (S0: any) => S0;
+        return dataPath.split("/").pop()!;   // nome declarado dentro do .onnx
+      } catch { return dataPath.split("/").pop()!; }
+    })();
+    const S = await ort.InferenceSession.create(modelUrl, {
       executionProviders: ["webgpu"],
-      externalData: [{ path: dataPath.split("/").pop()!, data: new URL(dataPath, base).href }],
+      externalData: [{ path: declared, data: dataUrl }],
     });
     const ct0 = new CT0(tok, S, buildSpecs());
+    // auto-detecta a saida de hidden state (grafo com `add_hidden_output.py` aplicado)
+    const outNames = (S as any).outputNames as string[] | undefined;
+    if (outNames) {
+      const h = outNames.find((n) => n === "type_as_80" || /hidden/i.test(n));
+      if (h) { (ct0 as any).hiddenOutput = h; status("hidden state disponivel: " + h); }
+    }
     if (opts.maxSafeTokens) ct0.maxSafeTokens = opts.maxSafeTokens;
     const firstId = (s: string) => { const a = ct0.ids(s); return a.length ? a[0] : null; };
     ct0.yesIds = [...new Set(["Yes", " Yes", "yes", " yes", "YES"].map(firstId).filter((x): x is number => x != null))];
@@ -169,14 +195,29 @@ export class CT0 {
     }
     return st;
   }
-  private async step(tid: number, pos: number, st: Record<string, any>) {
+  private async step(tid: number, pos: number, st: Record<string, any>, hiddenOut?: string) {
     const feed: Record<string, any> = {
       input_ids: new ort.Tensor("int64", BigInt64Array.from([BigInt(tid)]), [1, 1]),
       cache_position: new ort.Tensor("int64", BigInt64Array.from([BigInt(pos)]), [1]), ...st,
     };
-    const r = await this.S.run(feed);
+    // Ao pedir uma saida extra (hidden), o ORT devolve SO os nomes em fetchNames — os `so*`
+    // ficariam undefined e o passo seguinte morreria com "input si0 is missing". Entao o
+    // fetchNames precisa incluir TUDO que o loop de estado consome.
+    let r: any;
+    if (hiddenOut) {
+      const names: string[] = ["logits", hiddenOut];
+      for (let i = 0; i < this.NS; i++) names.push("so" + i);
+      r = await this.S.run(feed, names);
+    } else {
+      r = await this.S.run(feed);
+    }
     const ns: Record<string, any> = {}; for (let i = 0; i < this.NS; i++) ns["si" + i] = r["so" + i];
-    return { logits: r.logits, st: ns };
+    let hidden: Float32Array | undefined;
+    if (hiddenOut && r[hiddenOut]) {
+      const t: any = r[hiddenOut];
+      hidden = t.data instanceof Float32Array ? t.data : Float32Array.from(t.data);
+    }
+    return { logits: r.logits, st: ns, hidden };
   }
   private lastRow(L: any): Float32Array {
     const V = L.dims.at(-1), off = (L.dims.at(-2) - 1) * V, d = L.data, r = new Float32Array(V);
@@ -224,6 +265,43 @@ export class CT0 {
     const mx = Math.max(...all.map((i) => L[i]));
     const Z = all.reduce((a, i) => a + Math.exp(L[i] - mx), 0);
     return this.yesIds.reduce((a, i) => a + Math.exp(L[i] - mx), 0) / Z;
+  }
+
+  /**
+   * Prefill completo devolvendo os hidden states que o HEAD bilinear precisa.
+   *
+   * Requer o grafo com a saida extra `type_as_80` (hidden pos-norm, [1,1,2560]).
+   * Para gerar: `python3 add_hidden_output.py` (adiciona a output ao onnx existente,
+   * logits ficam bit-identicos) e carregue com `decodeModel: "onnx/model_q4f16_decode_head.onnx"`.
+   *
+   * Posicao do `<decide>` e a ultima posicao seguem a especificacao medida (EVIDENCE §20c):
+   *   q le no ultimo token de `<decide>`; k le na ultima posicao do prompt.
+   */
+  async prefillHiddens(prompt: string): Promise<{ atDecide: Float32Array; atLast: Float32Array; atOpts: Float32Array[] } | null> {
+    const hiddenName = (this as any).hiddenOutput as string | undefined;
+    if (!hiddenName) return null;
+    const ids = this.ids(prompt);
+    let st = this.initState(), pos = 0;
+    let atDecide: Float32Array | null = null;
+    let atLast: Float32Array | null = null;
+    const atOpts: Float32Array[] = [];
+    const mid = this.ids("<decide>");
+    const tail2 = mid.slice(-2);
+    const optEnd = this.ids("</opt>").slice(-2);
+    for (let i = 0; i < ids.length; i++) {
+      const r = await this.step(ids[i], pos, st, hiddenName);
+      st = r.st;
+      const h = (r as any).hidden as Float32Array | undefined;
+      if (h) {
+        if (i >= 1 && ids[i] === tail2[1] && ids[i - 1] === tail2[0]) atDecide = h;
+        // cada `</opt>` marca a posicao do hidden daquela opcao (choice no mesmo prompt)
+        if (i >= 1 && ids[i] === optEnd[1] && ids[i - 1] === optEnd[0]) atOpts.push(h);
+        if (i === ids.length - 1) atLast = h;
+      }
+      pos++;
+    }
+    if (!atDecide || !atLast) return null;
+    return { atDecide, atLast, atOpts };
   }
 
   private sample(logits: Float32Array, gen: number[], rand: () => number, o: any): number {
