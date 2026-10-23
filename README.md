@@ -132,7 +132,8 @@ Because the checkpoint has `head_lr = 0.0`, `q`/`k` are a fixed random projectio
 why the missing bias reduces to a scalar.
 
 Measured with 8 base + 8 held-out probes: **`noul` 16/16**, correlation +0.984 with the vocabulary
-logit read. `choice` (2/4) and `score` (3/6) do **not** reproduce with the partial head — they compare
+logit read. `choice` (2/8) and `score` (5/7) do **not** reproduce with the partial head (re-measured on
+`onnxruntime-web@1.30.0`, so the runtime is ruled out) — they compare
 magnitudes across positions, where the 29 missing rows of `k` inject noise of the same order as the
 signal. See `EVIDENCE.md` §21.
 
