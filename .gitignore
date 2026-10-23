@@ -14,3 +14,6 @@ dist/judges.js
 dist/detectors.js
 dist/cai.js
 dist/browser.js
+dist/recon.js
+dist/judges.js
+dist/detectors.js
