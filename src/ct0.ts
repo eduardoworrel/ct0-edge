@@ -203,8 +203,11 @@ export class CT0 {
     // Ao pedir uma saida extra (hidden), o ORT devolve SO os nomes em fetchNames — os `so*`
     // ficariam undefined e o passo seguinte morreria com "input si0 is missing". Entao o
     // fetchNames precisa incluir TUDO que o loop de estado consome.
+    // HIPOTESE (§23): passar fetchNames com 66 nomes faz o provider WebGPU pular a
+    // materializacao do hidden. Pedir TODAS as saidas (sem fetchNames) deveria forcar tudo.
+    // `allOutputs` e um escape hatch para medir isso; default mantem o fetchNames.
     let r: any;
-    if (hiddenOut) {
+    if (hiddenOut && !(this as any).allOutputs) {
       const names: string[] = ["logits", hiddenOut];
       for (let i = 0; i < this.NS; i++) names.push("so" + i);
       r = await this.S.run(feed, names);
@@ -219,8 +222,13 @@ export class CT0 {
       // O hidden e float16 ([1,1,2560]). `Float32Array.from(Uint16Array)` faz CAST NUMERICO
       // (0x3c00 -> 15360), nao decodifica fp16 — os valores viram lixo/Inf e o head devolve NaN.
       // Medido no browser: finite=0 de 2560. Decodifica bit a bit quando o tipo nao for float32.
+      // ort-web pode devolver o fp16 como `Float16Array` NATIVO (ES2025) quando o browser tem,
+      // ou como Uint16Array. O primeiro ja tem os valores decodificados; o segundo precisa de
+      // decode bit-a-bit. Confundir os dois produz zeros/lixo.
       if (t.data instanceof Float32Array) hidden = t.data;
-      else if (t.type === "float16" || t.data instanceof Uint16Array) {
+      else if (typeof (globalThis as any).Float16Array !== "undefined" && t.data instanceof (globalThis as any).Float16Array) {
+        hidden = Float32Array.from(t.data as any);          // ja decodificado
+      } else if (t.type === "float16" || t.data instanceof Uint16Array) {
         const u = t.data as Uint16Array;
         hidden = new Float32Array(u.length);
         for (let i = 0; i < u.length; i++) {
