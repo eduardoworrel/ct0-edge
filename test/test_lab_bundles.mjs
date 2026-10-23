@@ -65,18 +65,14 @@ console.log("\nos bundles estao atualizados em relacao ao fonte?");
 }
 
 
-console.log("\narquivos duplicados entre repos nao divergiram:");
+console.log("\nsem duplicacao entre repos:");
 {
-  // systemone.ts e headdecide.ts existem em ct0-edge E em cai-lite. O cai-lite precisa deles
-  // (headdecide importa systemone); o ct0-edge tambem (sao o SDK). Para nao divergirem em
-  // silencio, comparamos o conteudo.
-  const pairs = ["systemone.ts", "headdecide.ts"];
-  for (const f of pairs) {
-    const a = `/Users/pc/cai/ct0-lib/src/${f}`;
-    const b = `/Users/pc/cai/cai-lite/src/${f}`;
-    if (!existsSync(a) || !existsSync(b)) { ok(false, `${f}: ausente num dos repos`); continue; }
-    ok(readFileSync(a, "utf8") === readFileSync(b, "utf8"), `${f} identico em ct0-edge e cai-lite`);
-  }
+  // systemone.ts/headdecide.ts viviam nos dois repos. Agora cai-lite importa de
+  // ct0-edge/systemone (o peer que ele ja declara), entao so existe uma copia.
+  const dup = "/Users/pc/cai/cai-lite/src/systemone.ts";
+  ok(!existsSync(dup), "cai-lite nao tem copia local de systemone.ts (importa de ct0-edge)");
+  const hd = readFileSync("/Users/pc/cai/cai-lite/src/headdecide.ts", "utf8");
+  ok(/from "ct0-edge\/systemone"/.test(hd), "headdecide.ts importa de ct0-edge/systemone");
 }
 console.log(`\n=== ${pass} pass · ${fail} fail ===`);
 process.exit(fail ? 1 : 0);
