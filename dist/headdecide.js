@@ -66,9 +66,14 @@ You are a security decision function. Answer with exactly one word: Yes or No.<|
 function headDecide(hd, rt, opts = {}) {
   const render = opts.render || DEFAULT_RENDER;
   return async (state, question) => {
-    const h = await rt.hiddens(render(state, question));
-    const score = headScore(hd, h.atDecide, h.atLast);
-    return 1 / (1 + Math.exp(-score));
+    try {
+      const h = await rt.hiddens(render(state, question));
+      if (!h || !h.atDecide || !h.atLast) return 0.5;
+      const score = headScore(hd, h.atDecide, h.atLast);
+      return 1 / (1 + Math.exp(-score));
+    } catch {
+      return 0.5;
+    }
   };
 }
 async function headAnswer(hd, rt, q, opts = {}) {

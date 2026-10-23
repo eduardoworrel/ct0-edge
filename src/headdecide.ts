@@ -37,9 +37,16 @@ const DEFAULT_RENDER = (state: string, question: string) =>
 export function headDecide(hd: HeadWeights, rt: HiddenRuntime, opts: HeadDecideOptions = {}) {
   const render = opts.render || DEFAULT_RENDER;
   return async (state: string, question: string): Promise<number> => {
-    const h = await rt.hiddens(render(state, question));
-    const score = headScore(hd, h.atDecide, h.atLast);
-    return 1 / (1 + Math.exp(-score));
+    // Degradacao graciosa: se o runtime falhar (modelo fora, OOM, hidden ausente), devolve 0.5
+    // (incerteza) em vez de propagar. `recon()` ja tolera `decide` que rejeita, mas um adaptador
+    // que estoura obriga o chamador a envolver cada call em try/catch — e um laco de 38 decides
+    // nao deve morrer no primeiro erro transitorio.
+    try {
+      const h = await rt.hiddens(render(state, question));
+      if (!h || !h.atDecide || !h.atLast) return 0.5;
+      const score = headScore(hd, h.atDecide, h.atLast);
+      return 1 / (1 + Math.exp(-score));
+    } catch { return 0.5; }
   };
 }
 
