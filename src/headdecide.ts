@@ -45,6 +45,7 @@ export function headDecide(hd: HeadWeights, rt: HiddenRuntime, opts: HeadDecideO
       const h = await rt.hiddens(render(state, question));
       if (!h || !h.atDecide || !h.atLast) return 0.5;
       const score = headScore(hd, h.atDecide, h.atLast);
+      if (!Number.isFinite(score)) return 0.5;   // hidden invalido -> NaN -> incerteza
       return 1 / (1 + Math.exp(-score));
     } catch { return 0.5; }
   };

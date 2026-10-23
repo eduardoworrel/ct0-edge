@@ -46,9 +46,11 @@ function dot(a, b) {
 }
 var sigmoid = (z) => 1 / (1 + Math.exp(-z));
 function headScore(hd, hq, hk) {
+  if (!hq || !hk || hq.length < hd.hiddenSize || hk.length < hd.hiddenSize) return NaN;
   const a = proj(hd.q, hd.qb, hq, hd.headDim, hd.hiddenSize);
   const b = proj(hd.k, hd.kb, hk, hd.headDim, hd.hiddenSize);
-  return dot(a, b) / hd.temperature + (hd.scoreOffset || 0);
+  const s = dot(a, b) / hd.temperature + (hd.scoreOffset || 0);
+  return Number.isFinite(s) ? s : NaN;
 }
 function answer(hd, q, hiddens) {
   if (q.type === "noul") {

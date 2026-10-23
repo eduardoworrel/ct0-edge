@@ -127,9 +127,14 @@ const sigmoid = (z: number) => 1 / (1 + Math.exp(-z));
  * `hq` = hidden em `<decide>`; `hk` = hidden na última posição do prompt.
  */
 export function headScore(hd: HeadWeights, hq: Float32Array, hk: Float32Array): number {
+  // Um hidden de tamanho errado produziria NaN silencioso (proj le posicoes inexistentes) e o NaN
+  // se propagaria por todo o recon — pior que um erro, porque vira "nenhum achado" sem explicacao.
+  // Devolve NaN explicitamente so se o chamador passou lixo; headDecide converte em 0.5.
+  if (!hq || !hk || hq.length < hd.hiddenSize || hk.length < hd.hiddenSize) return NaN;
   const a = proj(hd.q, hd.qb, hq, hd.headDim, hd.hiddenSize);
   const b = proj(hd.k, hd.kb, hk, hd.headDim, hd.hiddenSize);
-  return dot(a, b) / hd.temperature + (hd.scoreOffset || 0);
+  const s = dot(a, b) / hd.temperature + (hd.scoreOffset || 0);
+  return Number.isFinite(s) ? s : NaN;
 }
 
 /**
