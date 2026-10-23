@@ -1,7 +1,8 @@
+// src/ct0.ts
 import * as ort from "onnxruntime-web/webgpu";
 import { AutoTokenizer, env } from "@huggingface/transformers";
-const EOS = /* @__PURE__ */ new Set([248046, 248044]);
-const F16 = globalThis.Float16Array;
+var EOS = /* @__PURE__ */ new Set([248046, 248044]);
+var F16 = globalThis.Float16Array;
 function buildSpecs() {
   const out = [];
   const conv = { d: [1, 8192, 4], f16: true, seq: -1 };
@@ -13,7 +14,7 @@ function buildSpecs() {
   }
   return out;
 }
-const prod = (a) => a.reduce((x, y) => x * y, 1);
+var prod = (a) => a.reduce((x, y) => x * y, 1);
 function mulberry32(seed) {
   let a = seed >>> 0 || 1;
   return () => {
@@ -24,7 +25,7 @@ function mulberry32(seed) {
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
 }
-class CT0 {
+var CT0 = class _CT0 {
   /** Contexto nominal do modelo (recorrência linear O(1)). */
   maxContext = 262144;
   /** Teto SAUDÁVEL de tokens de entrada no navegador (ort-web/WebGPU). */
@@ -76,7 +77,7 @@ class CT0 {
       executionProviders: ["webgpu"],
       externalData: [{ path: declared, data: dataUrl }]
     });
-    const ct0 = new CT0(tok, S, buildSpecs());
+    const ct0 = new _CT0(tok, S, buildSpecs());
     const outNames = S.outputNames;
     if (outNames) {
       const h = outNames.find((n) => n === "type_as_80" || /hidden/i.test(n));
@@ -233,7 +234,18 @@ class CT0 {
   }
   lastRow(L) {
     const V = L.dims.at(-1), off = (L.dims.at(-2) - 1) * V, d = L.data, r = new Float32Array(V);
-    for (let i = 0; i < V; i++) r[i] = Number(d[off + i]);
+    const isF16Arr = typeof globalThis.Float16Array !== "undefined" && d instanceof globalThis.Float16Array;
+    if (d instanceof Float32Array || isF16Arr) {
+      for (let i = 0; i < V; i++) r[i] = Number(d[off + i]);
+    } else if (L.type === "float16" || d instanceof Uint16Array) {
+      for (let i = 0; i < V; i++) {
+        const h = d[off + i];
+        const s = h & 32768 ? -1 : 1, e = (h & 31744) >> 10, f = h & 1023;
+        r[i] = e === 0 ? s * Math.pow(2, -14) * (f / 1024) : e === 31 ? f ? NaN : s * Infinity : s * Math.pow(2, e - 15) * (1 + f / 1024);
+      }
+    } else {
+      for (let i = 0; i < V; i++) r[i] = Number(d[off + i]);
+    }
     return r;
   }
   turn(msg, system, think) {
@@ -358,7 +370,7 @@ class CT0 {
     }
     return idx[idx.length - 1];
   }
-}
+};
 export {
   CT0
 };

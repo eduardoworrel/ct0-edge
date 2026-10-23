@@ -244,7 +244,25 @@ export class CT0 {
   }
   private lastRow(L: any): Float32Array {
     const V = L.dims.at(-1), off = (L.dims.at(-2) - 1) * V, d = L.data, r = new Float32Array(V);
-    for (let i = 0; i < V; i++) r[i] = Number(d[off + i]); return r;
+    // ort-web pode devolver o tensor como Float32Array, Float16Array NATIVO (ES2025) ou
+    // Uint16Array (fp16 cru). `Number(d[i])` funciona nos dois primeiros; no Uint16Array leria
+    // o bit pattern. Medido no browser: logits chegavam como Float16Array e `Number()` devolvia
+    // null -> decide() retornava NaN silencioso.
+    const isF16Arr = typeof (globalThis as any).Float16Array !== "undefined" && d instanceof (globalThis as any).Float16Array;
+    if (d instanceof Float32Array || isF16Arr) {
+      for (let i = 0; i < V; i++) r[i] = Number(d[off + i]);
+    } else if (L.type === "float16" || d instanceof Uint16Array) {
+      for (let i = 0; i < V; i++) {
+        const h = d[off + i];
+        const s = (h & 0x8000) ? -1 : 1, e = (h & 0x7c00) >> 10, f = h & 0x03ff;
+        r[i] = e === 0 ? s * Math.pow(2, -14) * (f / 1024)
+             : e === 0x1f ? (f ? NaN : s * Infinity)
+             : s * Math.pow(2, e - 15) * (1 + f / 1024);
+      }
+    } else {
+      for (let i = 0; i < V; i++) r[i] = Number(d[off + i]);
+    }
+    return r;
   }
   private turn(msg: string, system: string | undefined, think: boolean) {
     let t = ""; if (system) t += "<|im_start|>system\n" + system + "<|im_end|>\n";
