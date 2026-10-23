@@ -4,3 +4,13 @@ src/cai.ts
 src/browser.ts
 dist/cai.js
 dist/browser.js
+src/recon.ts
+src/judges.ts
+src/detectors.ts
+src/cai.ts
+src/browser.ts
+dist/recon.js
+dist/judges.js
+dist/detectors.js
+dist/cai.js
+dist/browser.js
