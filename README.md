@@ -114,7 +114,8 @@ projection over a hidden state you already computed.
 
 ```js
 import { loadHead, headScore } from "ct0-edge/systemone";
-const H = loadHead(headBytes);                       // 2.6 MB fp16
+// weights: https://huggingface.co/eduardoworrel/ct0-alias3-micro-onnx/resolve/main/head.bin
+const H = loadHead(await (await fetch(HEAD_URL)).arrayBuffer());   // 2.6 MB fp16
 const score = headScore(H, hiddenAtDecide, hiddenAtLast);
 const p = 1 / (1 + Math.exp(-score));
 ```
