@@ -293,13 +293,21 @@ function detectFromTool(toolName, facts) {
     case "infoDisclosure":
       return detectInfoDisclosure(Array.isArray(facts) ? facts : []);
     case "inspect": {
-      const d = facts || {};
+      let d = facts;
+      if (typeof d === "string") {
+        try {
+          d = JSON.parse(d);
+        } catch {
+          d = {};
+        }
+      }
+      d = d || {};
       const out = [];
       const scripts = [...d.inlineScripts || [], ...d.hiddenTexts || [], ...d.texts || [], ...d.comments || []];
       out.push(...detectMessageSurface(scripts));
       out.push(...detectEgressInSource(scripts));
       out.push(...detectPromptInjection(scripts));
-      const inlineHits = scripts.filter((s) => /(?:api[_-]?key|client_secret|secret_key|access_token|api_token|auth_token)\s*["']?\s*[:=]\s*["'][A-Za-z0-9_\-]{12,}["']/i.test(s) || /\b(sk_live|pk_live|AKIA|ghp_|xox[baprs]-)[A-Za-z0-9_\-]{8,}/.test(s) || /\bADM-[0-9a-f]{8,}/.test(s));
+      const inlineHits = scripts.filter((s) => /(?:api[_-]?key|client_secret|secret_key|access_token|api_token|auth_token)\s*["']?\s*[:=]\s*["'][A-Za-z0-9_\-]{12,}["']/i.test(s) || /\b(sk_live|pk_live|AKIA|ghp_|xox[baprs]-)[A-Za-z0-9_\-]{8,}/.test(s) || /\bADM-[0-9a-f]{8,}/.test(s) || /document\.cookie\s*(?:=|\+)|localStorage\.(?:getItem|setItem)\s*\(\s*["'][^"']*(?:token|key|secret|session|auth)/i.test(s));
       if (inlineHits.length) out.push({
         key: "secret-scan",
         conclusive: true,
@@ -310,6 +318,8 @@ function detectFromTool(toolName, facts) {
       });
       const ls = Object.entries(d.localStorage || {}).map(([name, value]) => ({ store: "localStorage", name, value: String(value) }));
       if (ls.length) out.push(...detectSecret(ls));
+      const cks = Array.isArray(d.cookies) ? d.cookies : [];
+      if (cks.length) out.push(...detectJsReadableCookie(cks));
       return out;
     }
     case "resources": {
@@ -324,6 +334,20 @@ function detectFromTool(toolName, facts) {
     default:
       return [];
   }
+}
+function strongEvidence(obs) {
+  const o = String(obs || "");
+  if (/✅ EXFIL-CONFIRMED|✅ EXECUTION-CONFIRMED/.test(o)) return "execution/exfil proven";
+  if (/<-SECRET\?|readable from JS \(NOT HttpOnly|acme_session|S3CR3T-/.test(o)) return "client-side secret exposed";
+  if (/⚠ action over HTTP|⚠ no CSRF token|⚠ autocomplete on/.test(o)) return "insecure form issue";
+  if (/⚠ tabnabbing|⚠ javascript: URL/.test(o)) return "dangerous link";
+  if (/weaknesses:[^\n]*(unsafe-inline|wildcard|no explicit script-src)/.test(o)) return "CSP weakness";
+  if (/DOM-XSS sinks found/.test(o)) return "DOM-XSS sink present";
+  if (/clobberar window\.|^postmessage\/|\npostmessage\//.test(o)) return "exploitable surface found";
+  if (/^resources=\d+, cross-origin=[1-9]/m.test(o)) return "cross-origin beacon/egress endpoint";
+  if (/"hiddenTexts":\s*\["/.test(o) && /(NOTE TO (ANY )?AI|disregard|ignore)/i.test(o))
+    return "untrusted content with AI-directed instructions";
+  return "";
 }
 export {
   SIGNAL_OWNER,
@@ -345,5 +369,6 @@ export {
   detectSensitivePath,
   detectSink,
   detectUnsandboxedIframe,
-  signalFits
+  signalFits,
+  strongEvidence
 };
