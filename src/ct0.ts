@@ -24,6 +24,9 @@ export interface LoadOptions {
   baseUrl?: string;
   /** Nome do arquivo do grafo decode-only (default onnx/model_q4f16_decode.onnx). */
   decodeModel?: string;
+  /** Execution providers do onnxruntime-web. Default `["webgpu"]`; use `["wasm"]` para isolar
+   *  se um problema de valores (NaN) e do provider e nao do grafo/modelo (EVIDENCE §24). */
+  providers?: string[];
   /** Nome do arquivo .data externo, se for diferente de `decodeModel + ".data"`.
    *  Variantes do mesmo grafo (ex. com hidden state) reusam o mesmo .data. */
   externalDataFile?: string;
@@ -99,7 +102,7 @@ export class CT0 {
       } catch { return dataPath.split("/").pop()!; }
     })();
     const S = await ort.InferenceSession.create(modelUrl, {
-      executionProviders: ["webgpu"],
+      executionProviders: (opts.providers ?? ["webgpu"]) as any,
       externalData: [{ path: declared, data: dataUrl }],
     });
     const ct0 = new CT0(tok, S, buildSpecs());

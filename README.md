@@ -18,7 +18,7 @@ Calls are **stateless, single-turn**: each builds its own prompt from a fresh st
 ### ONNX path (default)
 
 Drives the **decode-only recurrent graph** `onnx/model_q4f16_decode.onnx` (≈2.73 GB) — the one that fits the
-browser's ≈4 GB WASM cap and decodes at O(1)/token. **Requires `onnxruntime-web` ≥ 1.30** (earlier versions
+browser's ≈4 GB WASM cap and decodes at O(1)/token. **Requires `onnxruntime-web` ≥ 1.30** — measured: on 1.20.0 the WebGPU provider returns the logits tensor as `Float16Array` with **NaN values**, so `decide()` returns NaN. 1.30.0 is correct and discriminates. (earlier versions
 miscompute quantized ops on WebGPU). No transformers.js PR needed.
 
 ### WebLLM (MLC) path — `ct0-edge/webllm`
