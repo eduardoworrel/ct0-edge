@@ -72,7 +72,7 @@ console.log("\nsem duplicacao entre repos:");
   const dup = "/Users/pc/cai/cai-lite/src/systemone.ts";
   ok(!existsSync(dup), "cai-lite nao tem copia local de systemone.ts (importa de ct0-edge)");
   const hd = readFileSync("/Users/pc/cai/cai-lite/src/headdecide.ts", "utf8");
-  ok(/from "ct0-edge\/systemone"/.test(hd), "headdecide.ts importa de ct0-edge/systemone");
+  ok(/from "ct0-edge\/headdecide"/.test(hd), "cai-lite/headdecide reexporta ct0-edge/headdecide (sem copia)");
 }
 console.log(`\n=== ${pass} pass · ${fail} fail ===`);
 process.exit(fail ? 1 : 0);

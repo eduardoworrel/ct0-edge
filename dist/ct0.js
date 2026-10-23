@@ -1,8 +1,7 @@
-// src/ct0.ts
 import * as ort from "onnxruntime-web/webgpu";
 import { AutoTokenizer, env } from "@huggingface/transformers";
-var EOS = /* @__PURE__ */ new Set([248046, 248044]);
-var F16 = globalThis.Float16Array;
+const EOS = /* @__PURE__ */ new Set([248046, 248044]);
+const F16 = globalThis.Float16Array;
 function buildSpecs() {
   const out = [];
   const conv = { d: [1, 8192, 4], f16: true, seq: -1 };
@@ -14,7 +13,7 @@ function buildSpecs() {
   }
   return out;
 }
-var prod = (a) => a.reduce((x, y) => x * y, 1);
+const prod = (a) => a.reduce((x, y) => x * y, 1);
 function mulberry32(seed) {
   let a = seed >>> 0 || 1;
   return () => {
@@ -25,7 +24,7 @@ function mulberry32(seed) {
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
 }
-var CT0 = class _CT0 {
+class CT0 {
   /** Contexto nominal do modelo (recorrência linear O(1)). */
   maxContext = 262144;
   /** Teto SAUDÁVEL de tokens de entrada no navegador (ort-web/WebGPU). */
@@ -77,7 +76,7 @@ var CT0 = class _CT0 {
       executionProviders: ["webgpu"],
       externalData: [{ path: declared, data: dataUrl }]
     });
-    const ct0 = new _CT0(tok, S, buildSpecs());
+    const ct0 = new CT0(tok, S, buildSpecs());
     const outNames = S.outputNames;
     if (outNames) {
       const h = outNames.find((n) => n === "type_as_80" || /hidden/i.test(n));
@@ -204,7 +203,7 @@ var CT0 = class _CT0 {
       ...st
     };
     let r;
-    if (hiddenOut) {
+    if (hiddenOut && !this.allOutputs) {
       const names = ["logits", hiddenOut];
       for (let i = 0; i < this.NS; i++) names.push("so" + i);
       r = await this.S.run(feed, names);
@@ -216,8 +215,11 @@ var CT0 = class _CT0 {
     let hidden;
     if (hiddenOut && r[hiddenOut]) {
       const t = r[hiddenOut];
+      this.__lastHiddenTensor = t;
       if (t.data instanceof Float32Array) hidden = t.data;
-      else if (t.type === "float16" || t.data instanceof Uint16Array) {
+      else if (typeof globalThis.Float16Array !== "undefined" && t.data instanceof globalThis.Float16Array) {
+        hidden = Float32Array.from(t.data);
+      } else if (t.type === "float16" || t.data instanceof Uint16Array) {
         const u = t.data;
         hidden = new Float32Array(u.length);
         for (let i = 0; i < u.length; i++) {
@@ -356,7 +358,7 @@ var CT0 = class _CT0 {
     }
     return idx[idx.length - 1];
   }
-};
+}
 export {
   CT0
 };
