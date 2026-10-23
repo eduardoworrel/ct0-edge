@@ -12,3 +12,5 @@ diag*.mjs
 qual.mjs
 chk*.mjs
 *.tgz
+src/browser.ts
+src/cai.ts
