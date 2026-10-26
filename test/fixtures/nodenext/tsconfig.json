@@ -1,0 +1,1 @@
+{ "compilerOptions": { "module": "nodenext", "moduleResolution": "nodenext", "strict": true, "noEmit": true, "skipLibCheck": false, "types": [] , "lib": ["ES2023","DOM"]}, "files": ["consumer.ts"] }
