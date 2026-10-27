@@ -92,6 +92,31 @@ The original model (PyTorch bf16, as released) answers 54 · 46 · 26; 🟢 = wi
 
 ⁴ Share of the 172 questions whose answer differs from the original's (lowest–highest of the logits and head reads; `genai`: the CUDA int4 file). Overall accuracy is not statistically distinguishable from the original (none of 180 paired tests reaches p < 0.05).
 
+### Experimental: `runtime: "litert"` (LiteRT.js)
+
+> ⚠️ **Experimental.** LiteRT.js `@litertjs/core` **2.6.0** (pinned), browser **WebGPU only** (the CT0 weights do not
+> fit the 2 GiB LiteRT.js Wasm heap, so they are streamed into WebGPU buffers), **logits reads only** (the graph has no
+> hidden-state output), never chosen by `"auto"`. Loading prints a console warning saying so.
+> The CT0 bundle is **not published yet**: self-host it and pass `litertBaseUrl`.
+
+```bash
+npm i ct0-edge @huggingface/transformers @litertjs/core@2.6.0
+```
+
+```js
+const ct0 = await CT0.load({ runtime: "litert", litertBaseUrl: "https://your.host/ct0-litert/" });
+// bundle: manifest.json · model.graph.tflite · model.weights.bin (streamed) · embed.f16.bin (rows read with HTTP Range)
+```
+
+How it works: CT0 exported with litert-torch with the Gated-DeltaNet **decomposed** (LiteRT.js does not register the
+fused `gated_delta_update` op), a GQA fix so the graph is fully WebGPU-delegated, int4 FullyConnected weights moved to
+LiteRT external buffers and streamed with `loadModelAndWeights`. The backend owns the recurrent/conv/KV state (zeros
+per question), so there is no state leak between calls. Server needs: HTTP Range for `embed.f16.bin`.
+
+Status (`notes/litert-experiments.md` §9 in the research repo): on a CT0-geometry model, Chrome WebGPU fp32 matches
+PyTorch (top-50 |Δ log p| ≤ 0.012, greedy 8/8; 407-token prefill 0.36 s), WASM matches it too; the full-CT0 bundle
+export and its parity/speed on the 172-question set are pending.
+
 ## API
 
 ### `CT0.load(options)`
