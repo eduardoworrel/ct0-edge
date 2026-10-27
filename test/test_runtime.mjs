@@ -135,7 +135,8 @@ ok(JSON.stringify(packagesFor("decode-only", "node")) === '["@huggingface/transf
   && packagesFor("webllm", "browser").includes("@mlc-ai/web-llm") && packagesFor("transformers.js", "node").length === 1, "packagesFor per runtime and platform");
 
 console.log("\nper-runtime tables:");
-ok(RUNTIMES.every((r) => RUNTIME_LIMITS[r].maxSafeTokens === 2048), "RUNTIME_LIMITS: 2048 default for every runtime");
+ok(RUNTIMES.filter((r) => r !== "litert").every((r) => RUNTIME_LIMITS[r].maxSafeTokens === 2048), "RUNTIME_LIMITS: 2048 default for every runtime but litert");
+ok(RUNTIME_LIMITS.litert.maxSafeTokens === 2000, "litert: 2000 (the bundle's KV cache holds 2048 positions; leaves room to decode)");
 ok(maxSafeTokensFor("genai", "webgpu") === 7200 && maxSafeTokensFor("genai", "cuda") === 2048, "genai: 7200 on WebGPU (measured), 2048 on CUDA (not measured)");
 ok(maxSafeTokensFor("decode-only", "webgpu") === 3600 && maxSafeTokensFor("decode-only", "cpu") === 7200 && maxSafeTokensFor("decode-only", "wasm") === 2048, "decode-only: 3600 WebGPU, 7200 CPU, 2048 unmeasured");
 ok(maxSafeTokensFor("transformers.js", "webgpu") === 2048 && maxSafeTokensFor("webllm", "webgpu") === 2048, "transformers.js and webllm: 2048 (not measured)");

@@ -6,6 +6,9 @@
  *  - "decode-only":     decode-only graph (q4) on onnxruntime-web (WebGPU / WASM) or onnxruntime-node (CPU / CUDA).
  *  - "transformers.js": optimum-exported graph (q4) through transformers.js (WebGPU / WASM in the browser, CPU in Node).
  *  - "webllm":          MLC build (q4f32_1; q4f16_1 is faster, less faithful) through WebLLM; browser with WebGPU only.
+ *  - "litert":          EXPERIMENTAL. LiteRT.js (@litertjs/core 2.6.0) over a litert-torch .tflite (Gated-DeltaNet
+ *                       decomposed) with the int4 weights streamed into WebGPU buffers; browser WebGPU only (the weights
+ *                       do not fit the 2 GiB Wasm heap). Logits reads only. Never picked by "auto".
  *
  * `"auto"` picks from measured results: browser + WebGPU -> genai (fallback decode-only WebGPU); browser without WebGPU ->
  * decode-only WASM; Node + CUDA -> genai (fallback transformers.js CUDA, then CPU); Node CPU -> transformers.js CPU
@@ -25,6 +28,8 @@ export const DEFAULT_REPOS = {
   onnx: "eduardoworrel/alias3-micro-1026-ONNX",
   mlcQ4f16: "eduardoworrel/alias3-micro-1026-MLC-q4f16_1",
   mlcQ4f32: "eduardoworrel/alias3-micro-1026-MLC-q4f32_1",
+  /** NOT published yet (the LiteRT bundle waits for the owner's OK); pass `litertBaseUrl` to self-host. */
+  litert: "eduardoworrel/alias3-micro-1026-LiteRT",
 } as const;
 
 /** Head files inside each runtime's repo (graph files: `RUNTIME_DEFAULTS`). */
@@ -42,14 +47,14 @@ export async function detectWebGPU(nav: any = (globalThis as any).navigator): Pr
   } catch { return false; }
 }
 
-export type RuntimeName = "genai" | "decode-only" | "transformers.js" | "webllm";
+export type RuntimeName = "genai" | "decode-only" | "transformers.js" | "webllm" | "litert";
 export type RuntimeChoice = RuntimeName | "auto";
 export type Device = "webgpu" | "wasm" | "cpu" | "cuda";
 export type DeviceChoice = Device | "auto";
 export type Platform = "browser" | "node";
 export type AskMethod = "head" | "logits";
 
-export const RUNTIMES: readonly RuntimeName[] = ["genai", "decode-only", "transformers.js", "webllm"];
+export const RUNTIMES: readonly RuntimeName[] = ["genai", "decode-only", "transformers.js", "webllm", "litert"];
 const DEVICES: readonly Device[] = ["webgpu", "wasm", "cpu", "cuda"];
 
 /**
@@ -63,6 +68,7 @@ export const RUNTIME_LIMITS: Record<RuntimeName, { maxSafeTokens: number; byDevi
   "decode-only": { maxSafeTokens: 2048, byDevice: { webgpu: 3600, cpu: 7200 } },
   "transformers.js": { maxSafeTokens: 2048 },
   webllm: { maxSafeTokens: 2048 },
+  litert: { maxSafeTokens: 2000 },
 };
 
 export function maxSafeTokensFor(runtime: RuntimeName, device: Device): number {
@@ -111,11 +117,21 @@ export const RUNTIME_DEFAULTS = {
     methods: DEFAULT_METHOD,
     logitsOnlyMethods: { noul: "logits", choice: "logits", score: "logits" },
   },
+  litert: {
+    repo: DEFAULT_REPOS.litert,
+    /** Bundle produced by litert-exp/rb_build.py: manifest + graph + streamed weights + fp16 embedding rows. */
+    files: { manifest: "litert/manifest.json", graph: "litert/model.graph.tflite", weights: "litert/model.weights.bin", embed: "litert/embed.f16.bin" },
+    /** @litertjs/core wasm files (pinned; the npm package's wasm/ directory). */
+    wasm: "https://cdn.jsdelivr.net/npm/@litertjs/core@2.6.0/wasm/",
+    heads: false,
+    methods: { noul: "logits", choice: "logits", score: "logits" },
+  },
 } as const;
 
 /** `ask()` default read per mode for a runtime. WebLLM with recovery matrices reads like the ONNX runtimes. */
 export function defaultMethods(runtime: RuntimeName, opts: { webllmRecovery?: boolean } = {}): Readonly<Record<"noul" | "choice" | "score", AskMethod>> {
   if (runtime === "webllm" && !opts.webllmRecovery) return RUNTIME_DEFAULTS.webllm.logitsOnlyMethods;
+  if (runtime === "litert") return RUNTIME_DEFAULTS.litert.methods;
   return DEFAULT_METHOD;
 }
 
@@ -169,6 +185,10 @@ function deviceFor(runtime: RuntimeName, want: DeviceChoice, caps: Caps): Device
     case "webllm":
       if (platform === "node") throw new Error('ct0-edge: runtime "webllm" runs only in the browser (WebGPU). In Node use "decode-only" or "transformers.js".');
       if (dev === "wasm") throw new Error('ct0-edge: runtime "webllm" needs WebGPU.');
+      return needGpu("webgpu");
+    case "litert":
+      if (platform === "node") throw new Error('ct0-edge: runtime "litert" runs in the browser (LiteRT.js streams the weights into WebGPU buffers). In Node use "decode-only" or "transformers.js".');
+      if (dev === "wasm") throw new Error('ct0-edge: runtime "litert" needs WebGPU (the CT0 weights exceed the 2 GiB LiteRT.js Wasm heap).');
       return needGpu("webgpu");
     case "decode-only":
     case "transformers.js":
@@ -252,6 +272,7 @@ export function packagesFor(runtime: RuntimeName, platform: Platform): string[] 
   const ort = platform === "node" ? "onnxruntime-node" : "onnxruntime-web";
   if (runtime === "genai" || runtime === "decode-only") return ["@huggingface/transformers", ort];
   if (runtime === "webllm") return ["@huggingface/transformers", "@mlc-ai/web-llm"];
+  if (runtime === "litert") return ["@huggingface/transformers", "@litertjs/core"];
   return ["@huggingface/transformers"];
 }
 

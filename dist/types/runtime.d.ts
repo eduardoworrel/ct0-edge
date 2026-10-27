@@ -6,6 +6,9 @@
  *  - "decode-only":     decode-only graph (q4) on onnxruntime-web (WebGPU / WASM) or onnxruntime-node (CPU / CUDA).
  *  - "transformers.js": optimum-exported graph (q4) through transformers.js (WebGPU / WASM in the browser, CPU in Node).
  *  - "webllm":          MLC build (q4f32_1; q4f16_1 is faster, less faithful) through WebLLM; browser with WebGPU only.
+ *  - "litert":          EXPERIMENTAL. LiteRT.js (@litertjs/core 2.6.0) over a litert-torch .tflite (Gated-DeltaNet
+ *                       decomposed) with the int4 weights streamed into WebGPU buffers; browser WebGPU only (the weights
+ *                       do not fit the 2 GiB Wasm heap). Logits reads only. Never picked by "auto".
  *
  * `"auto"` picks from measured results: browser + WebGPU -> genai (fallback decode-only WebGPU); browser without WebGPU ->
  * decode-only WASM; Node + CUDA -> genai (fallback transformers.js CUDA, then CPU); Node CPU -> transformers.js CPU
@@ -23,6 +26,8 @@ export declare const DEFAULT_REPOS: {
     readonly onnx: "eduardoworrel/alias3-micro-1026-ONNX";
     readonly mlcQ4f16: "eduardoworrel/alias3-micro-1026-MLC-q4f16_1";
     readonly mlcQ4f32: "eduardoworrel/alias3-micro-1026-MLC-q4f32_1";
+    /** NOT published yet (the LiteRT bundle waits for the owner's OK); pass `litertBaseUrl` to self-host. */
+    readonly litert: "eduardoworrel/alias3-micro-1026-LiteRT";
 };
 /** Head files inside each runtime's repo (graph files: `RUNTIME_DEFAULTS`). */
 export declare const DEFAULT_FILES: {
@@ -31,7 +36,7 @@ export declare const DEFAULT_FILES: {
 };
 /** true when `navigator.gpu` exists and returns an adapter. Never throws. */
 export declare function detectWebGPU(nav?: any): Promise<boolean>;
-export type RuntimeName = "genai" | "decode-only" | "transformers.js" | "webllm";
+export type RuntimeName = "genai" | "decode-only" | "transformers.js" | "webllm" | "litert";
 export type RuntimeChoice = RuntimeName | "auto";
 export type Device = "webgpu" | "wasm" | "cpu" | "cuda";
 export type DeviceChoice = Device | "auto";
@@ -105,6 +110,24 @@ export declare const RUNTIME_DEFAULTS: {
         readonly heads: true;
         readonly methods: Readonly<Record<"noul" | "choice" | "score", "head" | "logits">>;
         readonly logitsOnlyMethods: {
+            readonly noul: "logits";
+            readonly choice: "logits";
+            readonly score: "logits";
+        };
+    };
+    readonly litert: {
+        readonly repo: "eduardoworrel/alias3-micro-1026-LiteRT";
+        /** Bundle produced by litert-exp/rb_build.py: manifest + graph + streamed weights + fp16 embedding rows. */
+        readonly files: {
+            readonly manifest: "litert/manifest.json";
+            readonly graph: "litert/model.graph.tflite";
+            readonly weights: "litert/model.weights.bin";
+            readonly embed: "litert/embed.f16.bin";
+        };
+        /** @litertjs/core wasm files (pinned; the npm package's wasm/ directory). */
+        readonly wasm: "https://cdn.jsdelivr.net/npm/@litertjs/core@2.6.0/wasm/";
+        readonly heads: false;
+        readonly methods: {
             readonly noul: "logits";
             readonly choice: "logits";
             readonly score: "logits";

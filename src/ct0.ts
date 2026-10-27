@@ -7,6 +7,7 @@
  *   const ct0 = await CT0.load({ runtime: "decode-only" });     // ONNX Runtime Web / Node
  *   const ct0 = await CT0.load({ runtime: "transformers.js" }); // optimum-exported graph via transformers.js
  *   const ct0 = await CT0.load({ runtime: "webllm" });          // MLC
+ *   const ct0 = await CT0.load({ runtime: "litert", litertBaseUrl }); // EXPERIMENTAL: LiteRT.js, WebGPU, logits reads
  *
  * Same API everywhere: ask() · askMany() · generate() · stream() · dispose(); ct0.runtime / ct0.device / ct0.fallbackReason.
  * Runtime packages are optional peers, imported only when the chosen runtime needs them.
@@ -16,6 +17,7 @@ import { createDecodeOnly } from "./backends/decodeOnly.js";
 import { createGenai, genaiFromSession, type GenaiOptions } from "./backends/genai.js";
 import { transformersJsFromModel } from "./backends/transformersjs.js";
 import { createWebllm, tryLoadRecovery, type Recovery } from "./webllm.js";
+import { createLiteRt, embedFromF16Reader, httpRangeReader, LITERTJS_VERSION } from "./backends/litert.js";
 import { tokenOffsets, decidePos, optPositionsFor, type Probe } from "./positions.js";
 import { ask as askImpl, askManyWith, type AskHeads, type AskOptions, type AskResult, type AskQuestion, type AskManyQuestion } from "./ask.js";
 import { loadHead } from "./systemone.js";
@@ -88,8 +90,16 @@ export interface LoadOptions {
   dtype?: string;
   /** WebLLM options. */
   mlc?: MlcOptions;
+  /** EXPERIMENTAL `runtime: "litert"`: bundle base (manifest.json, model.graph.tflite, model.weights.bin, embed.f16.bin).
+   *  Default `https://huggingface.co/<litertRepo>/resolve/main/litert/` (that repo is NOT published yet). */
+  litertBaseUrl?: string;
+  litertRepo?: string;
+  /** @litertjs/core wasm directory (default: jsDelivr, pinned @litertjs/core@2.6.0). */
+  litertWasmUrl?: string;
+  /** LiteRT.js WebGPU precision (default "fp32"). */
+  litertPrecision?: "fp32" | "fp16";
   /** Use these modules instead of importing them (custom builds, or bundlers that cannot resolve an optional import). */
-  modules?: { ort?: any; transformers?: any; webllm?: any };
+  modules?: { ort?: any; transformers?: any; webllm?: any; litert?: any };
   /** Node: where downloaded graphs are cached (default `$CT0_CACHE` or `~/.cache/ct0-edge`). */
   cacheDir?: string;
   /** Load `heads/head.bin` and `heads/head_score.bin` from the runtime's repo (default true; webllm: when its recovery loaded). */
@@ -261,12 +271,36 @@ export class CT0 {
       return createWebllm(webllm, { modelId: mlc.modelId ?? build.modelId, modelUrl, libUrl: modelLib, appConfig: mlc.appConfig, tok,
         recovery, initProgressCallback: mlc.initProgressCallback });
     };
+    const loadLitert = async (dev: Device): Promise<Backend> => {
+      const lrt = mods.litert ?? await importOptional("@litertjs/core", () => import(/* webpackIgnore: true */ /* @vite-ignore */ LITERT_PKG), 'runtime "litert"');
+      const D = RUNTIME_DEFAULTS.litert;
+      const lbase = absBase(opts.litertBaseUrl ?? `https://huggingface.co/${opts.litertRepo ?? D.repo}/resolve/main/litert/`);
+      const name = (f: string) => f.replace(/^litert\//, "");
+      status(`loading LiteRT.js ${LITERTJS_VERSION} runtime…`);
+      try { await lrt.loadLiteRt(opts.litertWasmUrl ?? D.wasm, { jspi: !!(globalThis as any).WebAssembly?.Suspending }); }
+      catch (e: any) { if (!/already loading|already loaded/i.test(String(e?.message ?? e))) throw e; }
+      const manifest = await (await fetch(at(name(D.files.manifest), lbase))).json();
+      const graph = new Uint8Array(await (await fetch(at(name(D.files.graph), lbase))).arrayBuffer());
+      const weightsUrl = at(name(D.files.weights), lbase);
+      status("streaming LiteRT weights into WebGPU…");
+      return createLiteRt(lrt, graph, manifest, embedFromF16Reader(httpRangeReader(at(name(D.files.embed), lbase)), manifest.hidden), {
+        accelerator: dev === "webgpu" ? "webgpu" : "wasm", gpuPrecision: opts.litertPrecision,
+        weights: manifest.externalized === false ? undefined : () => {
+          let body: ReadableStreamDefaultReader<Uint8Array> | null = null;
+          return new ReadableStream<Uint8Array>({
+            async pull(c) { body ??= (await fetch(weightsUrl)).body!.getReader(); const { done, value } = await body.read(); if (done) c.close(); else c.enqueue(value); },
+            cancel() { body?.cancel(); },
+          });
+        },
+      });
+    };
     const load = (p: Plan): Promise<Backend> => {
       switch (p.runtime) {
         case "genai": return loadGenai(p.device);
         case "decode-only": return loadDecodeOnly(p.device);
         case "transformers.js": return loadTransformers(p.device);
         case "webllm": return loadWebllm();
+        case "litert": return loadLitert(p.device);
       }
     };
 
@@ -443,3 +477,4 @@ export class CT0 {
 const NODE_ORT = "onnxruntime-node";
 const NODE_URL = "node:url";
 const WEBLLM_PKG = "@mlc-ai/web-llm";
+const LITERT_PKG = "@litertjs/core";

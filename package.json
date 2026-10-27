@@ -1,7 +1,7 @@
 {
   "name": "ct0-edge",
   "version": "0.6.0",
-  "description": "On-device SDK for CT0 (alias3-micro-1026) in the browser and Node: one CT0.load({ runtime }) over ONNX Runtime GenAI, decode-only ONNX Runtime, transformers.js and WebLLM; typed System-1 ask() (noul / choice / score) and System-2 generate().",
+  "description": "On-device SDK for CT0 (alias3-micro-1026) in the browser and Node: one CT0.load({ runtime }) over ONNX Runtime GenAI, decode-only ONNX Runtime, transformers.js, WebLLM and (experimental) LiteRT.js; typed System-1 ask() (noul / choice / score) and System-2 generate().",
   "type": "module",
   "main": "./dist/ct0.js",
   "module": "./dist/ct0.js",
@@ -42,6 +42,10 @@
     "./genai": {
       "types": "./dist/types/backends/genai.d.ts",
       "default": "./dist/genai.js"
+    },
+    "./litert": {
+      "types": "./dist/types/backends/litert.d.ts",
+      "default": "./dist/litert.js"
     }
   },
   "files": [
@@ -54,6 +58,7 @@
     "dist/decodeOnly.js",
     "dist/transformers.js",
     "dist/genai.js",
+    "dist/litert.js",
     "dist/types",
     "src/ct0.ts",
     "src/webllm.ts",
@@ -68,6 +73,7 @@
     "src/backends/decodeOnly.ts",
     "src/backends/transformersjs.ts",
     "src/backends/genai.ts",
+    "src/backends/litert.ts",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
@@ -75,7 +81,7 @@
     "docs/bench/logos/*"
   ],
   "scripts": {
-    "build": "esbuild src/ct0.ts --format=esm --target=es2022 --bundle --packages=external --outfile=dist/ct0.js && esbuild src/backends/decodeOnly.ts --format=esm --target=es2022 --bundle --outfile=dist/decodeOnly.js && esbuild src/webllm.ts --format=esm --target=es2022 --bundle --outfile=dist/webllm.js && esbuild src/systemone.ts --format=esm --target=es2022 --bundle --outfile=dist/systemone.js && esbuild src/headdecide.ts --format=esm --target=es2022 --bundle --outfile=dist/headdecide.js && esbuild src/positions.ts --format=esm --target=es2022 --bundle --outfile=dist/positions.js && esbuild src/ask.ts --format=esm --target=es2022 --bundle --outfile=dist/ask.js && esbuild src/backends/transformersjs.ts --format=esm --target=es2022 --bundle --packages=external --outfile=dist/transformers.js && esbuild src/backends/genai.ts --format=esm --target=es2022 --bundle --packages=external --outfile=dist/genai.js && npm run build:types",
+    "build": "esbuild src/ct0.ts --format=esm --target=es2022 --bundle --packages=external --outfile=dist/ct0.js && esbuild src/backends/decodeOnly.ts --format=esm --target=es2022 --bundle --outfile=dist/decodeOnly.js && esbuild src/webllm.ts --format=esm --target=es2022 --bundle --outfile=dist/webllm.js && esbuild src/systemone.ts --format=esm --target=es2022 --bundle --outfile=dist/systemone.js && esbuild src/headdecide.ts --format=esm --target=es2022 --bundle --outfile=dist/headdecide.js && esbuild src/positions.ts --format=esm --target=es2022 --bundle --outfile=dist/positions.js && esbuild src/ask.ts --format=esm --target=es2022 --bundle --outfile=dist/ask.js && esbuild src/backends/transformersjs.ts --format=esm --target=es2022 --bundle --packages=external --outfile=dist/transformers.js && esbuild src/backends/genai.ts --format=esm --target=es2022 --bundle --packages=external --outfile=dist/genai.js && esbuild src/backends/litert.ts --format=esm --target=es2022 --bundle --outfile=dist/litert.js && npm run build:types",
     "test": "npm run typecheck && npm run test:types:nodenext && for f in test/test_*.mjs; do node \"$f\" || exit 1; done",
     "prepare": "npm run build",
     "test:parity": "node test/parity_decode_only.mjs",
@@ -93,7 +99,8 @@
     "@huggingface/transformers": ">=3.0.0",
     "onnxruntime-web": ">=1.30.0",
     "onnxruntime-node": ">=1.30.0",
-    "@mlc-ai/web-llm": ">=0.2.86"
+    "@mlc-ai/web-llm": ">=0.2.86",
+    "@litertjs/core": "2.6.0"
   },
   "keywords": [
     "onnx",
@@ -129,6 +136,9 @@
       "optional": true
     },
     "@mlc-ai/web-llm": {
+      "optional": true
+    },
+    "@litertjs/core": {
       "optional": true
     }
   }

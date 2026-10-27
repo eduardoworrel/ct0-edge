@@ -7,6 +7,7 @@
  *   const ct0 = await CT0.load({ runtime: "decode-only" });     // ONNX Runtime Web / Node
  *   const ct0 = await CT0.load({ runtime: "transformers.js" }); // optimum-exported graph via transformers.js
  *   const ct0 = await CT0.load({ runtime: "webllm" });          // MLC
+ *   const ct0 = await CT0.load({ runtime: "litert", litertBaseUrl }); // EXPERIMENTAL: LiteRT.js, WebGPU, logits reads
  *
  * Same API everywhere: ask() · askMany() · generate() · stream() · dispose(); ct0.runtime / ct0.device / ct0.fallbackReason.
  * Runtime packages are optional peers, imported only when the chosen runtime needs them.
@@ -78,11 +79,20 @@ export interface LoadOptions {
     dtype?: string;
     /** WebLLM options. */
     mlc?: MlcOptions;
+    /** EXPERIMENTAL `runtime: "litert"`: bundle base (manifest.json, model.graph.tflite, model.weights.bin, embed.f16.bin).
+     *  Default `https://huggingface.co/<litertRepo>/resolve/main/litert/` (that repo is NOT published yet). */
+    litertBaseUrl?: string;
+    litertRepo?: string;
+    /** @litertjs/core wasm directory (default: jsDelivr, pinned @litertjs/core@2.6.0). */
+    litertWasmUrl?: string;
+    /** LiteRT.js WebGPU precision (default "fp32"). */
+    litertPrecision?: "fp32" | "fp16";
     /** Use these modules instead of importing them (custom builds, or bundlers that cannot resolve an optional import). */
     modules?: {
         ort?: any;
         transformers?: any;
         webllm?: any;
+        litert?: any;
     };
     /** Node: where downloaded graphs are cached (default `$CT0_CACHE` or `~/.cache/ct0-edge`). */
     cacheDir?: string;

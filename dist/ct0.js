@@ -1259,6 +1259,269 @@ async function createWebllm(webllm, opts) {
   return Object.assign(webllmBackend(engine, capture, { tok: opts.tok, recovery, eos: opts.eos }), { engine, capture });
 }
 
+// src/backends/litert.ts
+var LITERTJS_VERSION = "2.6.0";
+var LITERT_WARNING = `ct0-edge: runtime "litert" is EXPERIMENTAL (LiteRT.js @litertjs/core ${LITERTJS_VERSION}, WebGPU with streamed weights; WASM only for small inline graphs).`;
+function h2f(h) {
+  const s = h & 32768 ? -1 : 1, e = h >> 10 & 31, f = h & 1023;
+  return e === 0 ? s * 2 ** -14 * (f / 1024) : e === 31 ? f ? NaN : s * Infinity : s * 2 ** (e - 15) * (1 + f / 1024);
+}
+function embedFromF16Reader(read, hidden) {
+  return {
+    async rows(ids) {
+      const out = new Float32Array(ids.length * hidden), got = /* @__PURE__ */ new Map();
+      await Promise.all([...new Set(ids)].map(async (id) => {
+        const b = await read(id * hidden * 2, hidden * 2);
+        const c = b.byteOffset % 2 ? b.slice() : b;
+        got.set(id, new Uint16Array(c.buffer, c.byteOffset, hidden));
+      }));
+      ids.forEach((id, r) => {
+        const q = got.get(id);
+        for (let j = 0; j < hidden; j++) out[r * hidden + j] = h2f(q[j]);
+      });
+      return out;
+    }
+  };
+}
+function httpRangeReader(url, fetchFn = fetch) {
+  return async (offset, length) => {
+    const r = await fetchFn(url, { headers: { Range: `bytes=${offset}-${offset + length - 1}` } });
+    if (!r.ok) throw new Error(`litert: ${url} -> HTTP ${r.status}`);
+    const b = new Uint8Array(await r.arrayBuffer());
+    return r.status === 206 ? b : b.subarray(offset, offset + length);
+  };
+}
+var MASK_OFF = globalThis.__CT0_MASK_OFF ?? -1e30;
+function buildMask(pos, cache, dtype) {
+  const rows = pos.length;
+  if (dtype === "bool") {
+    const m2 = new Uint8Array(rows * cache);
+    for (let r = 0; r < rows; r++) m2.fill(1, r * cache, r * cache + pos[r] + 1);
+    return m2;
+  }
+  const m = new Float32Array(rows * cache).fill(MASK_OFF);
+  for (let r = 0; r < rows; r++) m.fill(0, r * cache, r * cache + pos[r] + 1);
+  return m;
+}
+function prefillChunks(n, P) {
+  const out = [];
+  for (let s = 0; s < n; s += P) out.push({ start: s, len: Math.min(P, n - s) });
+  return out;
+}
+var isState = (n) => n.startsWith("kv_cache_");
+var zerosOf = (io) => {
+  const n = io.shape.reduce((a, b) => a * b, 1);
+  return io.dtype === "int32" ? new Int32Array(n) : new Float32Array(n);
+};
+async function createLiteRt(lrt, graph, manifest, embed, opts = {}) {
+  if (!opts.quiet) console.warn(LITERT_WARNING);
+  const accelerator = opts.accelerator ?? "webgpu";
+  const sigNames = Object.keys(manifest.signatures);
+  const prefillName = sigNames.filter((s) => /^prefill_\d+$/.test(s)).sort((a, b) => +b.split("_")[1] - +a.split("_")[1])[0];
+  if (!prefillName || !manifest.signatures.decode) throw new Error(`litert: the graph needs prefill_<N> and decode signatures (has ${sigNames.join(", ")})`);
+  const P = +prefillName.split("_")[1];
+  const dec = manifest.signatures.decode;
+  const stateIO = dec.inputs.filter((i) => isState(i.name));
+  const maskIO = dec.inputs.find((i) => i.name === "mask");
+  if (!maskIO) throw new Error("litert: decode signature has no mask input");
+  const cache = maskIO.shape[maskIO.shape.length - 1];
+  const H = manifest.hidden;
+  const paramIO = dec.inputs.find((i) => i.name === "param_tensor");
+  const inplace = !!paramIO;
+  const gpuOptions = { precision: opts.gpuPrecision ?? "fp32" };
+  const copyState = opts.copyState ?? accelerator === "webgpu";
+  const model = accelerator === "webgpu" && opts.weights ? await lrt.loadModelAndWeights(graph, { getReader: () => opts.weights().getReader() }, { accelerator: "webgpu", gpuOptions }) : await lrt.loadAndCompile(graph, accelerator === "webgpu" ? { accelerator, gpuOptions } : { accelerator });
+  const T = (data, shape, dtype) => dtype ? new lrt.Tensor(data, shape, dtype) : new lrt.Tensor(data, shape);
+  const del = (t) => {
+    try {
+      t?.delete?.();
+    } catch {
+    }
+  };
+  const zeroStateHost = () => {
+    const st = {};
+    for (const io of stateIO) st[io.name] = T(zerosOf(io), io.shape);
+    return st;
+  };
+  async function freshState() {
+    const st = zeroStateHost();
+    if (inplace && accelerator === "webgpu") for (const k in st) {
+      const g = await st[k].moveTo("webgpu");
+      st[k] = g;
+    }
+    return st;
+  }
+  const freeState = (st) => {
+    for (const k in st) del(st[k]);
+  };
+  async function run(sig, emb, rows, pos, st, valid = rows) {
+    const feed = { ...st, embeddings: T(emb, [1, rows, H]), input_pos: T(pos, [rows]), mask: T(buildMask(pos, cache, maskIO.dtype), [1, 1, rows, cache], maskIO.dtype === "bool" ? "bool" : void 0) };
+    if (paramIO) {
+      const p = new Int32Array(paramIO.shape.reduce((a, b) => a * b, 1));
+      p[0] = pos[0];
+      p[1] = pos[0] + valid;
+      p[2] = pos[0] + valid;
+      feed.param_tensor = T(p, paramIO.shape);
+    }
+    const out = await model.run(sig, feed);
+    del(feed.embeddings);
+    del(feed.input_pos);
+    del(feed.mask);
+    del(feed.param_tensor);
+    if (inplace) return { st, logits: out.logits };
+    const ns = {};
+    for (const io of stateIO) {
+      const t = out[io.name];
+      if (!t) throw new Error(`litert: ${sig} did not return ${io.name}`);
+      if (copyState && t.copyTo) {
+        ns[io.name] = await t.copyTo("wasm");
+        del(t);
+      } else ns[io.name] = t;
+    }
+    freeState(st);
+    return { st: ns, logits: out.logits };
+  }
+  async function readLogits(L) {
+    const c = L.moveTo ? await L.moveTo("wasm") : L;
+    const a = Float32Array.from(c.toTypedArray());
+    if (c !== L) del(c);
+    del(L);
+    return a.subarray(a.length - manifest.vocab);
+  }
+  async function prefillTokens(ids, from, end, st) {
+    if (opts.decodeOnlyPrefill) {
+      for (let i = from; i < end; i++) {
+        const r = await run("decode", await embed.rows([ids[i]]), 1, Int32Array.from([i]), st);
+        st = r.st;
+        del(r.logits);
+      }
+      return st;
+    }
+    const remDec = opts.remainderViaDecode ?? accelerator === "webgpu";
+    for (const c of prefillChunks(end - from, P)) {
+      if (remDec && c.len < P) {
+        for (let i = from + c.start; i < from + c.start + c.len; i++) {
+          const r = await run("decode", await embed.rows([ids[i]]), 1, Int32Array.from([i]), st);
+          st = r.st;
+          del(r.logits);
+        }
+        continue;
+      }
+      const toks = ids.slice(from + c.start, from + c.start + c.len);
+      const emb = new Float32Array(P * H);
+      emb.set(await embed.rows(toks));
+      const pos = new Int32Array(P);
+      for (let i = 0; i < c.len; i++) pos[i] = from + c.start + i;
+      ({ st } = await run(prefillName, emb, P, pos, st, c.len));
+    }
+    return st;
+  }
+  async function decodeOne(tid, p, st) {
+    const r = await run("decode", await embed.rows([tid]), 1, Int32Array.from([p]), st);
+    return { st: r.st, logits: await readLogits(r.logits) };
+  }
+  async function lastLogitsFrom(ids, from, st) {
+    st = await prefillTokens(ids, from, ids.length - 1, st);
+    const r = await decodeOne(ids[ids.length - 1], ids.length - 1, st);
+    freeState(r.st);
+    return r.logits;
+  }
+  const noHidden = (want) => {
+    if (want.positions.length) throw new Error('litert: this graph has no hidden-state output; use ask() with method "logits"');
+  };
+  const gate = createGate("litert");
+  const snaps = /* @__PURE__ */ new WeakMap();
+  const snapshotState = async (st) => Promise.all(stateIO.map(async (io) => {
+    const t = st[io.name];
+    const c = t.moveTo ? await t.moveTo("wasm") : t;
+    const a = Float32Array.from(c.toTypedArray());
+    if (c !== t) del(c);
+    return a;
+  }));
+  const fromCopy = async (arrs) => {
+    const st = {};
+    stateIO.forEach((io, i) => {
+      st[io.name] = T(arrs[i].slice(), io.shape);
+    });
+    if (inplace && accelerator === "webgpu") for (const k in st) st[k] = await st[k].moveTo("webgpu");
+    return st;
+  };
+  return {
+    kind: "litert",
+    hiddenName: null,
+    dispose() {
+      return gate.dispose(() => model.delete?.());
+    },
+    async prefill(ids, want) {
+      gate.assertLive();
+      noHidden(want);
+      if (!ids.length) throw new Error("prefill: empty ids");
+      const rel = await gate.acquire();
+      try {
+        return { hiddens: [], lastLogits: await lastLogitsFrom(ids, 0, await freshState()) };
+      } finally {
+        rel();
+      }
+    },
+    async snapshot(ids) {
+      gate.assertLive();
+      if (!ids.length) throw new Error("litert: snapshot of empty ids");
+      const rel = await gate.acquire();
+      try {
+        const st = await prefillTokens(ids, 0, ids.length, await freshState());
+        const h = { ids: ids.slice(), dispose() {
+          snaps.delete(h);
+        } };
+        snaps.set(h, await snapshotState(st));
+        freeState(st);
+        return h;
+      } finally {
+        rel();
+      }
+    },
+    async prefillFrom(h, ids, want) {
+      gate.assertLive();
+      noHidden(want);
+      const arrs = snaps.get(h);
+      if (!arrs) throw new Error("litert: unknown or released snapshot handle");
+      const k = checkContinuation("litert", h, ids, want.positions);
+      const rel = await gate.acquire();
+      try {
+        return { hiddens: [], lastLogits: await lastLogitsFrom(ids, k, await fromCopy(arrs)) };
+      } finally {
+        rel();
+      }
+    },
+    async *generate(ids, o) {
+      gate.assertLive();
+      const g = resolveGenerateOptions(o), rand = mulberry32(g.seed);
+      if (!ids.length) throw new Error("generate: empty ids");
+      if (g.maxNewTokens === 0) return;
+      const rel = await gate.acquire();
+      let st = null;
+      try {
+        st = await prefillTokens(ids, 0, ids.length - 1, await freshState());
+        let r = await decodeOne(ids[ids.length - 1], ids.length - 1, st);
+        st = r.st;
+        const gen = [];
+        for (let s = 0, pos = ids.length; s < g.maxNewTokens; s++, pos++) {
+          if (g.signal?.aborted || pos >= cache) break;
+          const tid = sample(r.logits, gen, rand, g);
+          if (EOS.has(tid)) break;
+          gen.push(tid);
+          yield tid;
+          if (s + 1 >= g.maxNewTokens || g.signal?.aborted) break;
+          r = await decodeOne(tid, pos, st);
+          st = r.st;
+        }
+      } finally {
+        if (st) freeState(st);
+        rel();
+      }
+    }
+  };
+}
+
 // src/runtime.ts
 var DEFAULT_REPOS = {
   genai: "eduardoworrel/alias3-micro-1026-ONNX-genai",
@@ -1266,7 +1529,9 @@ var DEFAULT_REPOS = {
   /** optimum/Scan graph (transformers.js). */
   onnx: "eduardoworrel/alias3-micro-1026-ONNX",
   mlcQ4f16: "eduardoworrel/alias3-micro-1026-MLC-q4f16_1",
-  mlcQ4f32: "eduardoworrel/alias3-micro-1026-MLC-q4f32_1"
+  mlcQ4f32: "eduardoworrel/alias3-micro-1026-MLC-q4f32_1",
+  /** NOT published yet (the LiteRT bundle waits for the owner's OK); pass `litertBaseUrl` to self-host. */
+  litert: "eduardoworrel/alias3-micro-1026-LiteRT"
 };
 var DEFAULT_FILES = {
   head: "heads/head.bin",
@@ -1281,13 +1546,14 @@ async function detectWebGPU(nav = globalThis.navigator) {
     return false;
   }
 }
-var RUNTIMES = ["genai", "decode-only", "transformers.js", "webllm"];
+var RUNTIMES = ["genai", "decode-only", "transformers.js", "webllm", "litert"];
 var DEVICES = ["webgpu", "wasm", "cpu", "cuda"];
 var RUNTIME_LIMITS = {
   genai: { maxSafeTokens: 2048, byDevice: { webgpu: 7200 } },
   "decode-only": { maxSafeTokens: 2048, byDevice: { webgpu: 3600, cpu: 7200 } },
   "transformers.js": { maxSafeTokens: 2048 },
-  webllm: { maxSafeTokens: 2048 }
+  webllm: { maxSafeTokens: 2048 },
+  litert: { maxSafeTokens: 2e3 }
 };
 function maxSafeTokensFor(runtime, device) {
   const l = RUNTIME_LIMITS[runtime];
@@ -1338,10 +1604,20 @@ var RUNTIME_DEFAULTS = {
     heads: true,
     methods: DEFAULT_METHOD,
     logitsOnlyMethods: { noul: "logits", choice: "logits", score: "logits" }
+  },
+  litert: {
+    repo: DEFAULT_REPOS.litert,
+    /** Bundle produced by litert-exp/rb_build.py: manifest + graph + streamed weights + fp16 embedding rows. */
+    files: { manifest: "litert/manifest.json", graph: "litert/model.graph.tflite", weights: "litert/model.weights.bin", embed: "litert/embed.f16.bin" },
+    /** @litertjs/core wasm files (pinned; the npm package's wasm/ directory). */
+    wasm: "https://cdn.jsdelivr.net/npm/@litertjs/core@2.6.0/wasm/",
+    heads: false,
+    methods: { noul: "logits", choice: "logits", score: "logits" }
   }
 };
 function defaultMethods(runtime, opts = {}) {
   if (runtime === "webllm" && !opts.webllmRecovery) return RUNTIME_DEFAULTS.webllm.logitsOnlyMethods;
+  if (runtime === "litert") return RUNTIME_DEFAULTS.litert.methods;
   return DEFAULT_METHOD;
 }
 function resolveRuntimeChoice(o, fallback = "auto") {
@@ -1386,6 +1662,10 @@ function deviceFor(runtime, want, caps) {
     case "webllm":
       if (platform === "node") throw new Error('ct0-edge: runtime "webllm" runs only in the browser (WebGPU). In Node use "decode-only" or "transformers.js".');
       if (dev === "wasm") throw new Error('ct0-edge: runtime "webllm" needs WebGPU.');
+      return needGpu("webgpu");
+    case "litert":
+      if (platform === "node") throw new Error('ct0-edge: runtime "litert" runs in the browser (LiteRT.js streams the weights into WebGPU buffers). In Node use "decode-only" or "transformers.js".');
+      if (dev === "wasm") throw new Error('ct0-edge: runtime "litert" needs WebGPU (the CT0 weights exceed the 2 GiB LiteRT.js Wasm heap).');
       return needGpu("webgpu");
     case "decode-only":
     case "transformers.js":
@@ -1446,6 +1726,7 @@ function packagesFor(runtime, platform) {
   const ort = platform === "node" ? "onnxruntime-node" : "onnxruntime-web";
   if (runtime === "genai" || runtime === "decode-only") return ["@huggingface/transformers", ort];
   if (runtime === "webllm") return ["@huggingface/transformers", "@mlc-ai/web-llm"];
+  if (runtime === "litert") return ["@huggingface/transformers", "@litertjs/core"];
   return ["@huggingface/transformers"];
 }
 function isNotFound(e, pkg) {
@@ -1745,6 +2026,44 @@ var CT0 = class _CT0 {
         initProgressCallback: mlc.initProgressCallback
       });
     };
+    const loadLitert = async (dev) => {
+      const lrt = mods.litert ?? await importOptional("@litertjs/core", () => import(
+        /* webpackIgnore: true */
+        /* @vite-ignore */
+        LITERT_PKG
+      ), 'runtime "litert"');
+      const D = RUNTIME_DEFAULTS.litert;
+      const lbase = absBase(opts.litertBaseUrl ?? `https://huggingface.co/${opts.litertRepo ?? D.repo}/resolve/main/litert/`);
+      const name = (f) => f.replace(/^litert\//, "");
+      status(`loading LiteRT.js ${LITERTJS_VERSION} runtime\u2026`);
+      try {
+        await lrt.loadLiteRt(opts.litertWasmUrl ?? D.wasm, { jspi: !!globalThis.WebAssembly?.Suspending });
+      } catch (e) {
+        if (!/already loading|already loaded/i.test(String(e?.message ?? e))) throw e;
+      }
+      const manifest = await (await fetch(at(name(D.files.manifest), lbase))).json();
+      const graph = new Uint8Array(await (await fetch(at(name(D.files.graph), lbase))).arrayBuffer());
+      const weightsUrl = at(name(D.files.weights), lbase);
+      status("streaming LiteRT weights into WebGPU\u2026");
+      return createLiteRt(lrt, graph, manifest, embedFromF16Reader(httpRangeReader(at(name(D.files.embed), lbase)), manifest.hidden), {
+        accelerator: dev === "webgpu" ? "webgpu" : "wasm",
+        gpuPrecision: opts.litertPrecision,
+        weights: manifest.externalized === false ? void 0 : () => {
+          let body = null;
+          return new ReadableStream({
+            async pull(c) {
+              body ??= (await fetch(weightsUrl)).body.getReader();
+              const { done, value } = await body.read();
+              if (done) c.close();
+              else c.enqueue(value);
+            },
+            cancel() {
+              body?.cancel();
+            }
+          });
+        }
+      });
+    };
     const load = (p) => {
       switch (p.runtime) {
         case "genai":
@@ -1755,6 +2074,8 @@ var CT0 = class _CT0 {
           return loadTransformers(p.device);
         case "webllm":
           return loadWebllm();
+        case "litert":
+          return loadLitert(p.device);
       }
     };
     const sel = await selectRuntime(choice, device, { caps, load, onStatus: status });
@@ -1944,6 +2265,7 @@ var CT0 = class _CT0 {
 var NODE_ORT = "onnxruntime-node";
 var NODE_URL = "node:url";
 var WEBLLM_PKG = "@mlc-ai/web-llm";
+var LITERT_PKG = "@litertjs/core";
 export {
   CT0,
   DEFAULT_FILES,
