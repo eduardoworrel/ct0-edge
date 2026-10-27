@@ -113,9 +113,19 @@ fused `gated_delta_update` op), a GQA fix so the graph is fully WebGPU-delegated
 LiteRT external buffers and streamed with `loadModelAndWeights`. The backend owns the recurrent/conv/KV state (zeros
 per question), so there is no state leak between calls. Server needs: HTTP Range for `embed.f16.bin`.
 
-Status (`notes/litert-experiments.md` §9 in the research repo): on a CT0-geometry model, Chrome WebGPU fp32 matches
-PyTorch (top-50 |Δ log p| ≤ 0.012, greedy 8/8; 407-token prefill 0.36 s), WASM matches it too; the full-CT0 bundle
-export and its parity/speed on the 172-question set are pending.
+Measured on the full CT0 bundle (HF rev `61c0e710`, int4 blockwise-32 FC weights 2.1 GB streamed + fp16 embedding
+rows read on demand), Apple M2 Pro, Chrome WebGPU, 20 questions of our decision set (7 yes/no, 7 choice, 6 severity):
+
+| | `litert` WebGPU | native LiteRT CPU (same bundle) | `genai` int4 (reference) |
+|---|---|---|---|
+| answers equal to the fp32 reference | **19/20** | 17/20 | 17/20 |
+| yes/no p vs genai int4 | max \|Δp\| 0.058 | 0.039 | — |
+| greedy 12 tokens vs PyTorch fp32 | 9/12 (first 8 identical) | 9/12 | — |
+| load | 24.8 s | 7.0 s | — |
+| time / decision (median · max) | **3.2 s · 15.5 s** (534 tokens) | 7.3 s · 31 s | ~0.5 s browser |
+
+Not in `"auto"`: it is about 6x slower per decision than `genai` in the browser (the export has a 16-token prefill
+signature; a larger one needs more than 62 GB of RAM to export).
 
 ## API
 
