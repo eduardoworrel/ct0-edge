@@ -141,6 +141,9 @@ export async function createLiteRt(lrt: LiteRtJs, graph: Uint8Array, manifest: L
   // state outputs, so the state tensors are created on the GPU once per sequence and passed to every run.
   const paramIO = dec.inputs.find((i) => i.name === "param_tensor");
   const inplace = !!paramIO;
+  // Post-norm hidden-state output (patch: litert-torch `output_hidden`). When present, ask() can read the
+  // trained System-1 heads (head.bin / head_score.bin) from it, like the ONNX/genai runtimes. Absent -> logits only.
+  const hiddenOut = (dec.outputs.find((o) => o.name === "hidden") ?? dec.outputs.find((o) => /(^|[_/])hidden(_states)?$/.test(o.name)))?.name ?? null;
   const gpuOptions = { precision: opts.gpuPrecision ?? "fp32" };
   const copyState = opts.copyState ?? accelerator === "webgpu";
   const model = accelerator === "webgpu" && opts.weights
@@ -166,7 +169,7 @@ export async function createLiteRt(lrt: LiteRtJs, graph: Uint8Array, manifest: L
     if (paramIO) { const p = new Int32Array(paramIO.shape.reduce((a, b) => a * b, 1)); p[0] = pos[0]; p[1] = pos[0] + valid; p[2] = pos[0] + valid; feed.param_tensor = T(p, paramIO.shape); }
     const out = await model.run(sig, feed);
     del(feed.embeddings); del(feed.input_pos); del(feed.mask); del(feed.param_tensor);
-    if (inplace) return { st, logits: out.logits };
+    if (inplace) return { st, logits: out.logits, hidden: hiddenOut ? out[hiddenOut] : undefined };
     const ns: Record<string, any> = {};
     for (const io of stateIO) {
       const t = out[io.name];
@@ -174,7 +177,7 @@ export async function createLiteRt(lrt: LiteRtJs, graph: Uint8Array, manifest: L
       if (copyState && t.copyTo) { ns[io.name] = await t.copyTo("wasm"); del(t); } else ns[io.name] = t;
     }
     freeState(st);
-    return { st: ns, logits: out.logits };
+    return { st: ns, logits: out.logits, hidden: hiddenOut ? out[hiddenOut] : undefined };
   }
   async function readLogits(L: any): Promise<Float32Array> {
     const c = L.moveTo ? await L.moveTo("wasm") : L;
@@ -183,36 +186,52 @@ export async function createLiteRt(lrt: LiteRtJs, graph: Uint8Array, manifest: L
     del(L);
     return a.subarray(a.length - manifest.vocab);
   }
-  /** Feeds ids[from..n-1) through prefill chunks on top of `st` (state after ids[0..from)). */
-  async function prefillTokens(ids: number[], from: number, end: number, st: Record<string, any>) {
+  /** Reads rows [rowStart..rowStart+rows) of a `hidden` output ([1, rows, H]) into `at` for the wanted global
+   *  positions. `firstPos` is the global position of row 0. */
+  async function collectHidden(hid: any, firstPos: number, rows: number, want: Set<number>, at: Map<number, Float32Array>) {
+    if (!hid || !want.size) { del(hid); return; }
+    const c = hid.moveTo ? await hid.moveTo("wasm") : hid;
+    const a = c.toTypedArray();
+    for (let r = 0; r < rows; r++) { const p = firstPos + r; if (want.has(p)) at.set(p, Float32Array.from(a.subarray(r * H, r * H + H))); }
+    if (c !== hid) del(c);
+    del(hid);
+  }
+  /** Feeds ids[from..end) through prefill chunks (or decode for a short remainder) on top of `st`.
+   *  Collects the `hidden` row for every global position in `want` into `at`. */
+  async function prefillTokens(ids: number[], from: number, end: number, st: Record<string, any>, want?: Set<number>, at?: Map<number, Float32Array>) {
+    const grab = async (r: any, firstPos: number, rows: number) => { if (want && at) await collectHidden(r.hidden, firstPos, rows, want, at); else del(r.hidden); };
     if (opts.decodeOnlyPrefill) {
-      for (let i = from; i < end; i++) { const r = await run("decode", await embed.rows([ids[i]]), 1, Int32Array.from([i]), st); st = r.st; del(r.logits); }
+      for (let i = from; i < end; i++) { const r = await run("decode", await embed.rows([ids[i]]), 1, Int32Array.from([i]), st); st = r.st; del(r.logits); await grab(r, i, 1); }
       return st;
     }
     const remDec = opts.remainderViaDecode ?? accelerator === "webgpu";
     for (const c of prefillChunks(end - from, P)) {
       if (remDec && c.len < P) {
-        for (let i = from + c.start; i < from + c.start + c.len; i++) { const r = await run("decode", await embed.rows([ids[i]]), 1, Int32Array.from([i]), st); st = r.st; del(r.logits); }
+        for (let i = from + c.start; i < from + c.start + c.len; i++) { const r = await run("decode", await embed.rows([ids[i]]), 1, Int32Array.from([i]), st); st = r.st; del(r.logits); await grab(r, i, 1); }
         continue;
       }
       const toks = ids.slice(from + c.start, from + c.start + c.len);
       const emb = new Float32Array(P * H); emb.set(await embed.rows(toks));
       const pos = new Int32Array(P); for (let i = 0; i < c.len; i++) pos[i] = from + c.start + i;
-      ({ st } = await run(prefillName, emb, P, pos, st, c.len));
+      const r = await run(prefillName, emb, P, pos, st, c.len); st = r.st; await grab(r, from + c.start, c.len);
     }
     return st;
   }
   async function decodeOne(tid: number, p: number, st: Record<string, any>) {
     const r = await run("decode", await embed.rows([tid]), 1, Int32Array.from([p]), st);
-    return { st: r.st, logits: await readLogits(r.logits) };
+    return { st: r.st, logits: await readLogits(r.logits), hidden: r.hidden };
   }
-  async function lastLogitsFrom(ids: number[], from: number, st: Record<string, any>) {
-    st = await prefillTokens(ids, from, ids.length - 1, st);
-    const r = await decodeOne(ids[ids.length - 1], ids.length - 1, st);
+  /** Runs ids[from..] and returns the last-position logits plus the hidden rows at `want.positions`. */
+  async function feedFrom(ids: number[], from: number, st: Record<string, any>, positions: number[]) {
+    const want = new Set(positions); const at = new Map<number, Float32Array>();
+    const last = ids.length - 1;
+    st = await prefillTokens(ids, from, last, st, want, at);
+    const r = await decodeOne(ids[last], last, st);
+    await collectHidden(r.hidden, last, 1, want, at);
     freeState(r.st);
-    return r.logits;
+    return { lastLogits: r.logits, hiddens: positions.map((p) => at.get(p)!) };
   }
-  const noHidden = (want: { positions: number[] }) => { if (want.positions.length) throw new Error('litert: this graph has no hidden-state output; use ask() with method "logits"'); };
+  const checkHidden = (want: { positions: number[] }) => { if (want.positions.length && !hiddenOut) throw new Error('litert: this graph has no hidden-state output; use ask() with method "logits"'); };
 
   const gate = createGate("litert");
   const snaps = new WeakMap<StateHandle, Float32Array[]>();
@@ -222,13 +241,13 @@ export async function createLiteRt(lrt: LiteRtJs, graph: Uint8Array, manifest: L
     return st; };
   return {
     kind: "litert",
-    hiddenName: null,
+    hiddenName: hiddenOut,
     dispose() { return gate.dispose(() => model.delete?.()); },
     async prefill(ids, want) {
-      gate.assertLive(); noHidden(want);
+      gate.assertLive(); checkHidden(want);
       if (!ids.length) throw new Error("prefill: empty ids");
       const rel = await gate.acquire();
-      try { return { hiddens: [], lastLogits: await lastLogitsFrom(ids, 0, await freshState()) }; } finally { rel(); }
+      try { return await feedFrom(ids, 0, await freshState(), want.positions); } finally { rel(); }
     },
     async snapshot(ids) {
       gate.assertLive();
@@ -243,12 +262,12 @@ export async function createLiteRt(lrt: LiteRtJs, graph: Uint8Array, manifest: L
       } finally { rel(); }
     },
     async prefillFrom(h, ids, want) {
-      gate.assertLive(); noHidden(want);
+      gate.assertLive(); checkHidden(want);
       const arrs = snaps.get(h);
       if (!arrs) throw new Error("litert: unknown or released snapshot handle");
       const k = checkContinuation("litert", h, ids, want.positions);
       const rel = await gate.acquire();
-      try { return { hiddens: [], lastLogits: await lastLogitsFrom(ids, k, await fromCopy(arrs)) }; } finally { rel(); }
+      try { return await feedFrom(ids, k, await fromCopy(arrs), want.positions); } finally { rel(); }
     },
     async *generate(ids, o: GenerateOptions) {
       gate.assertLive();

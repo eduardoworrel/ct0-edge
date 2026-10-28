@@ -119,5 +119,45 @@ console.log("\nwarning + runtime plan:");
   ok(packagesFor("litert", "browser").includes("@litertjs/core"), "needs @litertjs/core");
 }
 
+console.log("\nhidden output (head reads enabled):");
+{
+  // fake model that also returns a "hidden" output: hidden[r] = [state_after_row, 0] per row.
+  function fakeHidden() {
+    const log = [];
+    const io = (rows) => ({ inputs: [{ name: "embeddings", shape: [1, rows, H], dtype: "float32" }, { name: "input_pos", shape: [rows], dtype: "int32" },
+      { name: "mask", shape: [1, 1, rows, CACHE], dtype: "float32" }, { name: "kv_cache_r_0", shape: [1, 1], dtype: "float32" }],
+      outputs: [{ name: "kv_cache_r_0", shape: [1, 1], dtype: "float32" }] });
+    const manifest = { format: "ct0-litert-bundle/1", vocab: V, hidden: H, signatures: { [`prefill_${P}`]: io(P), decode: io(1) } };
+    manifest.signatures.decode.outputs.push({ name: "logits", shape: [1, 1, V], dtype: "float32" });
+    for (const sig of [`prefill_${P}`, "decode"]) manifest.signatures[sig].outputs.push({ name: "hidden", shape: [1, sig === "decode" ? 1 : P, H], dtype: "float32" });
+    const model = { deleted: false, delete() { this.deleted = true; },
+      async run(sig, feed) {
+        const pos = feed.input_pos.data, e = feed.embeddings.data; let r = feed.kv_cache_r_0.data[0];
+        const rows = pos.length, hid = new Float32Array(rows * H);
+        for (let i = 0; i < rows; i++) { if (i === 0 || pos[i] > pos[i - 1]) r = 0.5 * r + e[i * H]; hid[i * H] = r; hid[i * H + 1] = pos[i]; }
+        const out = { kv_cache_r_0: new Tensor(Float32Array.of(r), [1, 1]), hidden: new Tensor(hid, [1, rows, H]) };
+        if (sig === "decode") out.logits = new Tensor(Float32Array.from({ length: V }, (_, i) => r * (i - 2)), [1, 1, V]);
+        log.push(sig); return out;
+      } };
+    const lrt = { Tensor, async loadAndCompile() { return model; } };
+    return { manifest, model, lrt };
+  }
+  const t = fakeHidden();
+  const be = await createLiteRt(t.lrt, new Uint8Array(4), t.manifest, embed, { accelerator: "wasm", quiet: true });
+  ok(be.hiddenName === "hidden", "hiddenName set when the graph has a hidden output");
+  const ids = [3, 1, 4, 1, 5, 9, 2]; // positions 0..6
+  const { hiddens, lastLogits } = await be.prefill(ids, { positions: [0, 3, 6] });
+  ok(hiddens.length === 3 && hiddens.every((h) => h && h.length === H), "prefill returns a hidden row per requested position");
+  // hidden[*][0] = running state after that position; [*][1] = the position index
+  ok(hiddens[0][1] === 0 && hiddens[1][1] === 3 && hiddens[2][1] === 6, "hidden rows come from the right positions (chunk + last)");
+  const sref = (n) => ids.slice(0, n + 1).reduce((a, x) => 0.5 * a + x, 0);
+  ok(Math.abs(hiddens[1][0] - sref(3)) < 1e-6 && Math.abs(hiddens[2][0] - sref(6)) < 1e-6, "hidden value = reference running state at that position");
+  ok(Math.abs(lastLogits[V - 1] - sref(6) * (V - 3)) < 1e-6, "logits still correct alongside hidden");
+  // back-compat: a graph WITHOUT hidden still rejects a positions request
+  const plain = mk({ accelerator: "wasm" }); const be2 = await plain.be();
+  ok(be2.hiddenName === null, "no hidden output -> hiddenName null (back-compat)");
+  ok(await throws(() => be2.prefill([1, 2], { positions: [0] }), /no hidden-state output/), "positions on a logits-only graph still throw");
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

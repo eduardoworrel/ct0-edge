@@ -1328,6 +1328,7 @@ async function createLiteRt(lrt, graph, manifest, embed, opts = {}) {
   const H = manifest.hidden;
   const paramIO = dec.inputs.find((i) => i.name === "param_tensor");
   const inplace = !!paramIO;
+  const hiddenOut = (dec.outputs.find((o) => o.name === "hidden") ?? dec.outputs.find((o) => /(^|[_/])hidden(_states)?$/.test(o.name)))?.name ?? null;
   const gpuOptions = { precision: opts.gpuPrecision ?? "fp32" };
   const copyState = opts.copyState ?? accelerator === "webgpu";
   const model = accelerator === "webgpu" && opts.weights ? await lrt.loadModelAndWeights(graph, { getReader: () => opts.weights().getReader() }, { accelerator: "webgpu", gpuOptions }) : await lrt.loadAndCompile(graph, accelerator === "webgpu" ? { accelerator, gpuOptions } : { accelerator });
@@ -1368,7 +1369,7 @@ async function createLiteRt(lrt, graph, manifest, embed, opts = {}) {
     del(feed.input_pos);
     del(feed.mask);
     del(feed.param_tensor);
-    if (inplace) return { st, logits: out.logits };
+    if (inplace) return { st, logits: out.logits, hidden: hiddenOut ? out[hiddenOut] : void 0 };
     const ns = {};
     for (const io of stateIO) {
       const t = out[io.name];
@@ -1379,7 +1380,7 @@ async function createLiteRt(lrt, graph, manifest, embed, opts = {}) {
       } else ns[io.name] = t;
     }
     freeState(st);
-    return { st: ns, logits: out.logits };
+    return { st: ns, logits: out.logits, hidden: hiddenOut ? out[hiddenOut] : void 0 };
   }
   async function readLogits(L) {
     const c = L.moveTo ? await L.moveTo("wasm") : L;
@@ -1388,12 +1389,31 @@ async function createLiteRt(lrt, graph, manifest, embed, opts = {}) {
     del(L);
     return a.subarray(a.length - manifest.vocab);
   }
-  async function prefillTokens(ids, from, end, st) {
+  async function collectHidden(hid, firstPos, rows, want, at) {
+    if (!hid || !want.size) {
+      del(hid);
+      return;
+    }
+    const c = hid.moveTo ? await hid.moveTo("wasm") : hid;
+    const a = c.toTypedArray();
+    for (let r = 0; r < rows; r++) {
+      const p = firstPos + r;
+      if (want.has(p)) at.set(p, Float32Array.from(a.subarray(r * H, r * H + H)));
+    }
+    if (c !== hid) del(c);
+    del(hid);
+  }
+  async function prefillTokens(ids, from, end, st, want, at) {
+    const grab = async (r, firstPos, rows) => {
+      if (want && at) await collectHidden(r.hidden, firstPos, rows, want, at);
+      else del(r.hidden);
+    };
     if (opts.decodeOnlyPrefill) {
       for (let i = from; i < end; i++) {
         const r = await run("decode", await embed.rows([ids[i]]), 1, Int32Array.from([i]), st);
         st = r.st;
         del(r.logits);
+        await grab(r, i, 1);
       }
       return st;
     }
@@ -1401,9 +1421,10 @@ async function createLiteRt(lrt, graph, manifest, embed, opts = {}) {
     for (const c of prefillChunks(end - from, P)) {
       if (remDec && c.len < P) {
         for (let i = from + c.start; i < from + c.start + c.len; i++) {
-          const r = await run("decode", await embed.rows([ids[i]]), 1, Int32Array.from([i]), st);
-          st = r.st;
-          del(r.logits);
+          const r2 = await run("decode", await embed.rows([ids[i]]), 1, Int32Array.from([i]), st);
+          st = r2.st;
+          del(r2.logits);
+          await grab(r2, i, 1);
         }
         continue;
       }
@@ -1412,22 +1433,28 @@ async function createLiteRt(lrt, graph, manifest, embed, opts = {}) {
       emb.set(await embed.rows(toks));
       const pos = new Int32Array(P);
       for (let i = 0; i < c.len; i++) pos[i] = from + c.start + i;
-      ({ st } = await run(prefillName, emb, P, pos, st, c.len));
+      const r = await run(prefillName, emb, P, pos, st, c.len);
+      st = r.st;
+      await grab(r, from + c.start, c.len);
     }
     return st;
   }
   async function decodeOne(tid, p, st) {
     const r = await run("decode", await embed.rows([tid]), 1, Int32Array.from([p]), st);
-    return { st: r.st, logits: await readLogits(r.logits) };
+    return { st: r.st, logits: await readLogits(r.logits), hidden: r.hidden };
   }
-  async function lastLogitsFrom(ids, from, st) {
-    st = await prefillTokens(ids, from, ids.length - 1, st);
-    const r = await decodeOne(ids[ids.length - 1], ids.length - 1, st);
+  async function feedFrom(ids, from, st, positions) {
+    const want = new Set(positions);
+    const at = /* @__PURE__ */ new Map();
+    const last = ids.length - 1;
+    st = await prefillTokens(ids, from, last, st, want, at);
+    const r = await decodeOne(ids[last], last, st);
+    await collectHidden(r.hidden, last, 1, want, at);
     freeState(r.st);
-    return r.logits;
+    return { lastLogits: r.logits, hiddens: positions.map((p) => at.get(p)) };
   }
-  const noHidden = (want) => {
-    if (want.positions.length) throw new Error('litert: this graph has no hidden-state output; use ask() with method "logits"');
+  const checkHidden = (want) => {
+    if (want.positions.length && !hiddenOut) throw new Error('litert: this graph has no hidden-state output; use ask() with method "logits"');
   };
   const gate = createGate("litert");
   const snaps = /* @__PURE__ */ new WeakMap();
@@ -1448,17 +1475,17 @@ async function createLiteRt(lrt, graph, manifest, embed, opts = {}) {
   };
   return {
     kind: "litert",
-    hiddenName: null,
+    hiddenName: hiddenOut,
     dispose() {
       return gate.dispose(() => model.delete?.());
     },
     async prefill(ids, want) {
       gate.assertLive();
-      noHidden(want);
+      checkHidden(want);
       if (!ids.length) throw new Error("prefill: empty ids");
       const rel = await gate.acquire();
       try {
-        return { hiddens: [], lastLogits: await lastLogitsFrom(ids, 0, await freshState()) };
+        return await feedFrom(ids, 0, await freshState(), want.positions);
       } finally {
         rel();
       }
@@ -1481,13 +1508,13 @@ async function createLiteRt(lrt, graph, manifest, embed, opts = {}) {
     },
     async prefillFrom(h, ids, want) {
       gate.assertLive();
-      noHidden(want);
+      checkHidden(want);
       const arrs = snaps.get(h);
       if (!arrs) throw new Error("litert: unknown or released snapshot handle");
       const k = checkContinuation("litert", h, ids, want.positions);
       const rel = await gate.acquire();
       try {
-        return { hiddens: [], lastLogits: await lastLogitsFrom(ids, k, await fromCopy(arrs)) };
+        return await feedFrom(ids, k, await fromCopy(arrs), want.positions);
       } finally {
         rel();
       }

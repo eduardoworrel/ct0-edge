@@ -8,6 +8,9 @@
   is fp16 and read one row at a time with HTTP Range. Logits reads only (the graph has no hidden-state output). The
   backend owns the recurrent/conv/KV state and zeroes it per question, so there is no cross-call leak. Never chosen by
   `"auto"`; loading prints a warning that it is experimental.
+- `litert` reads the trained System-1 heads (`head.bin`/`head_score.bin`) when the bundle's graph exposes a
+  post-norm `hidden` output (ct0-edge auto-detects it; `method: "head"`/`"both"`). The current public bundle is
+  logits-only, so heads apply once the hidden-state bundle is published; behaviour is unchanged when the output is absent.
 - The bundle (`manifest.json`, `model.graph.tflite`, `model.weights.bin`, `embed.f16.bin`) is self-hosted via
   `litertBaseUrl` / `litertRepo`. Measured on the full CT0 bundle (Apple M2 Pro, Chrome WebGPU): 19/20 answers equal to
   the fp32 reference over 20 decisions (genai int4: 17/20), 9/12 greedy tokens vs HF fp32, ~3.2 s/decision median (vs
