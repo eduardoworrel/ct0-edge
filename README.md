@@ -97,7 +97,7 @@ The original model (PyTorch bf16, as released) answers 54 · 46 · 26; 🟢 = wi
 > ⚠️ **Experimental.** LiteRT.js `@litertjs/core` **2.6.0** (pinned), browser **WebGPU only** (the CT0 weights do not
 > fit the 2 GiB LiteRT.js Wasm heap, so they are streamed into WebGPU buffers), **logits reads only** (the graph has no
 > hidden-state output), never chosen by `"auto"`. Loading prints a console warning saying so.
-> The CT0 bundle is **not published yet**: self-host it and pass `litertBaseUrl`.
+> Default bundle repo: `eduardoworrel/alias3-micro-1026-LiteRT` (`litertRepo` / `litertBaseUrl` to self-host).
 
 ```bash
 npm i ct0-edge @huggingface/transformers @litertjs/core@2.6.0

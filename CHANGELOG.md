@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.0
+
+- **Experimental `runtime: "litert"`** — CT0 through [LiteRT.js](https://www.npmjs.com/package/@litertjs/core)
+  (`@litertjs/core` 2.6.0, pinned optional peer). Browser **WebGPU only**: the int4 FullyConnected weights are streamed
+  into WebGPU buffers (`loadModelAndWeights`) because they exceed LiteRT.js's 2 GiB WASM heap; the token-embedding table
+  is fp16 and read one row at a time with HTTP Range. Logits reads only (the graph has no hidden-state output). The
+  backend owns the recurrent/conv/KV state and zeroes it per question, so there is no cross-call leak. Never chosen by
+  `"auto"`; loading prints a warning that it is experimental.
+- The bundle (`manifest.json`, `model.graph.tflite`, `model.weights.bin`, `embed.f16.bin`) is self-hosted via
+  `litertBaseUrl` / `litertRepo`. Measured on the full CT0 bundle (Apple M2 Pro, Chrome WebGPU): 19/20 answers equal to
+  the fp32 reference over 20 decisions (genai int4: 17/20), 9/12 greedy tokens vs HF fp32, ~3.2 s/decision median (vs
+  ~0.5 s for `genai`), 24.8 s load. New entry point `ct0-edge/litert` and a mock-backed test suite.
+
 ## 0.6.0
 
 First public release.
