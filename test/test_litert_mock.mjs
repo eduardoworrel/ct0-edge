@@ -1,4 +1,4 @@
-// test_litert_mock.mjs — createLiteRt (EXPERIMENTAL runtime "litert") with a FAKE LiteRT.js module (no model):
+// test_litert_mock.mjs — createLiteRt (opt-in runtime "litert") with a FAKE LiteRT.js module (no model):
 // prefill chunking/padding, decode, fresh state per call (no cross-call leak, unlike LiteRT-LM #3165), snapshots,
 // generate, helpers, and the runtime plan (never chosen by "auto").
 import { createLiteRt, buildMask, prefillChunks, embedFromF16Reader, httpRangeReader, LITERT_WARNING } from "../dist/litert.js";
@@ -106,7 +106,7 @@ console.log("\nwarning + runtime plan:");
   const msgs = []; const w = console.warn; console.warn = (m) => msgs.push(m);
   const t = mk({ accelerator: "wasm" }); await createLiteRt(t.lrt, new Uint8Array(4), t.manifest, embed, { accelerator: "wasm" });
   console.warn = w;
-  ok(msgs.length === 1 && msgs[0] === LITERT_WARNING && /EXPERIMENTAL/.test(LITERT_WARNING), "experimental warning printed once");
+  ok(msgs.length === 1 && msgs[0] === LITERT_WARNING && /opt-in/.test(LITERT_WARNING), "opt-in note printed once");
   ok(RUNTIMES.includes("litert"), "litert is a known runtime");
   const auto = planRuntime("auto", "auto", { platform: "browser", webgpu: true, cuda: false });
   ok(!auto.some((p) => p.runtime === "litert"), "auto never picks litert");

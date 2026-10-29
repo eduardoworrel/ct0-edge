@@ -6,7 +6,7 @@
  *  - "decode-only":     decode-only graph (q4) on onnxruntime-web (WebGPU / WASM) or onnxruntime-node (CPU / CUDA).
  *  - "transformers.js": optimum-exported graph (q4) through transformers.js (WebGPU / WASM in the browser, CPU in Node).
  *  - "webllm":          MLC build (q4f32_1; q4f16_1 is faster, less faithful) through WebLLM; browser with WebGPU only.
- *  - "litert":          EXPERIMENTAL. LiteRT.js (@litertjs/core 2.6.0) over a litert-torch .tflite (Gated-DeltaNet
+ *  - "litert":          opt-in. LiteRT.js (@litertjs/core 2.6.0) over a litert-torch .tflite (Gated-DeltaNet
  *                       decomposed) with the int4 weights streamed into WebGPU buffers; browser WebGPU only (the weights
  *                       do not fit the 2 GiB Wasm heap). Logits reads only. Never picked by "auto".
  *
@@ -28,7 +28,7 @@ export const DEFAULT_REPOS = {
   onnx: "eduardoworrel/alias3-micro-1026-ONNX",
   mlcQ4f16: "eduardoworrel/alias3-micro-1026-MLC-q4f16_1",
   mlcQ4f32: "eduardoworrel/alias3-micro-1026-MLC-q4f32_1",
-  /** EXPERIMENTAL LiteRT bundles: one folder per build under `litert/` (see `LITERT_QUANTS`); pass `litertBaseUrl` to self-host. */
+  /** LiteRT bundles (opt-in runtime): one folder per build under `litert/` (see `LITERT_QUANTS`); pass `litertBaseUrl` to self-host. */
   litert: "eduardoworrel/alias3-micro-1026-LiteRT",
 } as const;
 

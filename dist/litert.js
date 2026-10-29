@@ -117,7 +117,7 @@ function sample(logits, gen, rand, o) {
 
 // src/backends/litert.ts
 var LITERTJS_VERSION = "2.6.0";
-var LITERT_WARNING = `ct0-edge: runtime "litert" is EXPERIMENTAL (LiteRT.js @litertjs/core ${LITERTJS_VERSION}, WebGPU with streamed weights; WASM only for small inline graphs).`;
+var LITERT_WARNING = `ct0-edge: runtime "litert" is opt-in (LiteRT.js @litertjs/core ${LITERTJS_VERSION}, WebGPU with streamed weights; about 10x slower per decision than "genai"). Pass quiet: true to silence this note.`;
 function embedFromQ8(q8, scale, hidden) {
   const q = q8 instanceof Int8Array ? q8 : new Int8Array(q8.buffer, q8.byteOffset, q8.byteLength);
   return {

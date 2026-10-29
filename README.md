@@ -92,11 +92,11 @@ The original model (PyTorch bf16, as released) answers 54 · 46 · 26; 🟢 = wi
 
 ⁴ Share of the 172 questions whose answer differs from the original's (lowest–highest of the logits and head reads; `genai`: the CUDA int4 file). Overall accuracy is not statistically distinguishable from the original (none of 180 paired tests reaches p < 0.05).
 
-### Experimental: `runtime: "litert"` (LiteRT.js)
+### `runtime: "litert"` (LiteRT.js, opt-in)
 
-> ⚠️ **Experimental.** LiteRT.js `@litertjs/core` **2.6.0** (pinned), browser **WebGPU only** (the CT0 weights do not
+> **Opt-in.** LiteRT.js `@litertjs/core` **2.6.0** (pinned), browser **WebGPU only** (the CT0 weights do not
 > fit the 2 GiB LiteRT.js Wasm heap, so they are streamed into WebGPU buffers), never chosen by `"auto"`. Loading prints
-> a console warning saying so. It reads both the logits and the System-1 readout heads (`head.bin` / `head_score.bin`),
+> a console note saying so (`quiet: true` silences it). It reads both the logits and the System-1 readout heads (`head.bin` / `head_score.bin`),
 > which it takes from the `hidden` output of the graph.
 > Default bundle repo: `eduardoworrel/alias3-micro-1026-LiteRT`. `litertQuant` picks the folder, `litertRepo` / `litertBaseUrl` self-host.
 

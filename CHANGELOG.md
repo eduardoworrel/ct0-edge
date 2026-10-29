@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.1
+
+- The `litert` runtime is described as **opt-in** rather than experimental: README, comments and the load-time console message now say that it
+  is never chosen by `"auto"` (about 10x slower per decision than `genai` in the browser) and that it is WebGPU only. Behaviour and the measured
+  numbers are unchanged.
+
 ## 0.7.0
 
 - **Experimental `runtime: "litert"`** — CT0 through [LiteRT.js](https://www.npmjs.com/package/@litertjs/core)

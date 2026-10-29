@@ -1,6 +1,6 @@
 {
   "name": "ct0-edge",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "On-device SDK for CT0 (alias3-micro-1026) in the browser and Node: one CT0.load({ runtime }) over ONNX Runtime GenAI, decode-only ONNX Runtime, transformers.js, WebLLM and (experimental) LiteRT.js; typed System-1 ask() (noul / choice / score) and System-2 generate().",
   "type": "module",
   "main": "./dist/ct0.js",

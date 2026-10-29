@@ -7,7 +7,7 @@
  *   const ct0 = await CT0.load({ runtime: "decode-only" });     // ONNX Runtime Web / Node
  *   const ct0 = await CT0.load({ runtime: "transformers.js" }); // optimum-exported graph via transformers.js
  *   const ct0 = await CT0.load({ runtime: "webllm" });          // MLC
- *   const ct0 = await CT0.load({ runtime: "litert", litertBaseUrl }); // EXPERIMENTAL: LiteRT.js, WebGPU, logits reads
+ *   const ct0 = await CT0.load({ runtime: "litert", litertBaseUrl }); // opt-in: LiteRT.js, WebGPU, logits and head reads
  *
  * Same API everywhere: ask() · askMany() · generate() · stream() · dispose(); ct0.runtime / ct0.device / ct0.fallbackReason.
  * Runtime packages are optional peers, imported only when the chosen runtime needs them.
@@ -90,7 +90,7 @@ export interface LoadOptions {
   dtype?: string;
   /** WebLLM options. */
   mlc?: MlcOptions;
-  /** EXPERIMENTAL `runtime: "litert"`: bundle base (manifest.json, model.graph.tflite, model.weights.bin, embed.f16.bin).
+  /** Opt-in `runtime: "litert"`: bundle base (manifest.json, model.graph.tflite, model.weights.bin, embed.f16.bin).
    *  Default `https://huggingface.co/<litertRepo>/resolve/main/litert/<litertQuant>/`. */
   litertBaseUrl?: string;
   litertRepo?: string;

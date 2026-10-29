@@ -285,7 +285,7 @@ console.log("\nCT0.load webllm (fake browser):");
   }
 }
 
-console.log("\nlitertBundleBase (EXPERIMENTAL litert bundle URLs, one folder per build):");
+console.log("\nlitertBundleBase (opt-in litert bundle URLs, one folder per build):");
 ok(JSON.stringify(LITERT_QUANTS) === '["int4","int8","int4-b64"]', "browser builds: int4, int8, int4-b64 (fp16 is native-CPU only, not listed)");
 ok(litertBundleBase() === "https://huggingface.co/eduardoworrel/alias3-micro-1026-LiteRT/resolve/main/litert/int4/", "default = the int4 folder of the default repo");
 ok(litertBundleBase({ litertQuant: "int8" }).endsWith("/resolve/main/litert/int8/"), "litertQuant int8 -> litert/int8/");

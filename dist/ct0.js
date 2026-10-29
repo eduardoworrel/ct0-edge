@@ -1261,7 +1261,7 @@ async function createWebllm(webllm, opts) {
 
 // src/backends/litert.ts
 var LITERTJS_VERSION = "2.6.0";
-var LITERT_WARNING = `ct0-edge: runtime "litert" is EXPERIMENTAL (LiteRT.js @litertjs/core ${LITERTJS_VERSION}, WebGPU with streamed weights; WASM only for small inline graphs).`;
+var LITERT_WARNING = `ct0-edge: runtime "litert" is opt-in (LiteRT.js @litertjs/core ${LITERTJS_VERSION}, WebGPU with streamed weights; about 10x slower per decision than "genai"). Pass quiet: true to silence this note.`;
 function h2f(h) {
   const s = h & 32768 ? -1 : 1, e = h >> 10 & 31, f = h & 1023;
   return e === 0 ? s * 2 ** -14 * (f / 1024) : e === 31 ? f ? NaN : s * Infinity : s * 2 ** (e - 15) * (1 + f / 1024);
@@ -1557,7 +1557,7 @@ var DEFAULT_REPOS = {
   onnx: "eduardoworrel/alias3-micro-1026-ONNX",
   mlcQ4f16: "eduardoworrel/alias3-micro-1026-MLC-q4f16_1",
   mlcQ4f32: "eduardoworrel/alias3-micro-1026-MLC-q4f32_1",
-  /** EXPERIMENTAL LiteRT bundles: one folder per build under `litert/` (see `LITERT_QUANTS`); pass `litertBaseUrl` to self-host. */
+  /** LiteRT bundles (opt-in runtime): one folder per build under `litert/` (see `LITERT_QUANTS`); pass `litertBaseUrl` to self-host. */
   litert: "eduardoworrel/alias3-micro-1026-LiteRT"
 };
 var LITERT_QUANTS = ["int4", "int8", "int4-b64"];

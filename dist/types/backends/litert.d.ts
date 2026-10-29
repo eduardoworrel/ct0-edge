@@ -1,5 +1,5 @@
 /**
- * litert.ts — EXPERIMENTAL backend over LiteRT.js (`@litertjs/core`, pinned 2.6.0) for a CT0 `.tflite` exported with
+ * litert.ts — opt-in backend over LiteRT.js (`@litertjs/core`, pinned 2.6.0) for a CT0 `.tflite` exported with
  * litert-torch (Gated-DeltaNet decomposed, `gdn_mode=1`), packaged by `rb_build.py`:
  *
  *   manifest.json        signatures (prefill_<N>, decode), inputs/outputs, state tensors, file sizes + sha256
@@ -15,7 +15,7 @@
  */
 import { type Backend } from "../backend.js";
 export declare const LITERTJS_VERSION = "2.6.0";
-export declare const LITERT_WARNING = "ct0-edge: runtime \"litert\" is EXPERIMENTAL (LiteRT.js @litertjs/core 2.6.0, WebGPU with streamed weights; WASM only for small inline graphs).";
+export declare const LITERT_WARNING = "ct0-edge: runtime \"litert\" is opt-in (LiteRT.js @litertjs/core 2.6.0, WebGPU with streamed weights; about 10x slower per decision than \"genai\"). Pass quiet: true to silence this note.";
 export interface TensorIO {
     name: string;
     shape: number[];
@@ -67,7 +67,7 @@ export interface LiteRtOptions {
     remainderViaDecode?: boolean;
     /** Debug: feed prompt tokens one by one through `decode` instead of `prefill_<N>`. */
     decodeOnlyPrefill?: boolean;
-    /** Silence the experimental warning. */
+    /** Silence the load-time note. */
     quiet?: boolean;
 }
 /** Embedding source over in-memory int8 rows + per-row fp32 scales. */
