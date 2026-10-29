@@ -1557,9 +1557,16 @@ var DEFAULT_REPOS = {
   onnx: "eduardoworrel/alias3-micro-1026-ONNX",
   mlcQ4f16: "eduardoworrel/alias3-micro-1026-MLC-q4f16_1",
   mlcQ4f32: "eduardoworrel/alias3-micro-1026-MLC-q4f32_1",
-  /** NOT published yet (the LiteRT bundle waits for the owner's OK); pass `litertBaseUrl` to self-host. */
+  /** EXPERIMENTAL LiteRT bundles: one folder per build under `litert/` (see `LITERT_QUANTS`); pass `litertBaseUrl` to self-host. */
   litert: "eduardoworrel/alias3-micro-1026-LiteRT"
 };
+var LITERT_QUANTS = ["int4", "int8", "int4-b64"];
+function litertBundleBase(o = {}) {
+  if (o.litertBaseUrl) return o.litertBaseUrl;
+  const q = o.litertQuant ?? "int4";
+  if (!LITERT_QUANTS.includes(q)) throw new Error(`ct0-edge: litertQuant must be one of ${LITERT_QUANTS.join(", ")} (got ${JSON.stringify(q)})`);
+  return `https://huggingface.co/${o.litertRepo ?? DEFAULT_REPOS.litert}/resolve/main/litert/${q}/`;
+}
 var DEFAULT_FILES = {
   head: "heads/head.bin",
   headScore: "heads/head_score.bin"
@@ -2060,7 +2067,7 @@ var CT0 = class _CT0 {
         LITERT_PKG
       ), 'runtime "litert"');
       const D = RUNTIME_DEFAULTS.litert;
-      const lbase = absBase(opts.litertBaseUrl ?? `https://huggingface.co/${opts.litertRepo ?? D.repo}/resolve/main/litert/`);
+      const lbase = absBase(litertBundleBase(opts));
       const name = (f) => f.replace(/^litert\//, "");
       status(`loading LiteRT.js ${LITERTJS_VERSION} runtime\u2026`);
       try {
@@ -2300,6 +2307,7 @@ export {
   DEFAULT_REPOS,
   GENAI_NODE_CPU_ERROR,
   GENERATE_DEFAULTS,
+  LITERT_QUANTS,
   MLC_Q4F32_LIB,
   RUNTIMES,
   RUNTIME_DEFAULTS,
@@ -2311,6 +2319,7 @@ export {
   detectWebGPU,
   importOptional,
   levelFromCuts,
+  litertBundleBase,
   maxSafeTokensFor,
   packagesFor,
   planRuntime,

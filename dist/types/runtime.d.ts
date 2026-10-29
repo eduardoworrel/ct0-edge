@@ -26,9 +26,18 @@ export declare const DEFAULT_REPOS: {
     readonly onnx: "eduardoworrel/alias3-micro-1026-ONNX";
     readonly mlcQ4f16: "eduardoworrel/alias3-micro-1026-MLC-q4f16_1";
     readonly mlcQ4f32: "eduardoworrel/alias3-micro-1026-MLC-q4f32_1";
-    /** NOT published yet (the LiteRT bundle waits for the owner's OK); pass `litertBaseUrl` to self-host. */
+    /** EXPERIMENTAL LiteRT bundles: one folder per build under `litert/` (see `LITERT_QUANTS`); pass `litertBaseUrl` to self-host. */
     readonly litert: "eduardoworrel/alias3-micro-1026-LiteRT";
 };
+/** Browser builds in the LiteRT repo, one folder each under `litert/`. (`litert/fp16/` is native-CPU only and is not loadable here.) */
+export declare const LITERT_QUANTS: readonly ["int4", "int8", "int4-b64"];
+export type LiteRtQuant = (typeof LITERT_QUANTS)[number];
+/** Base URL of a LiteRT bundle folder: an explicit `litertBaseUrl` wins, else `<litertRepo>/resolve/main/litert/<litertQuant>/` (default int4). */
+export declare function litertBundleBase(o?: {
+    litertBaseUrl?: string;
+    litertRepo?: string;
+    litertQuant?: string;
+}): string;
 /** Head files inside each runtime's repo (graph files: `RUNTIME_DEFAULTS`). */
 export declare const DEFAULT_FILES: {
     readonly head: "heads/head.bin";

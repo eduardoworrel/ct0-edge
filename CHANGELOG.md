@@ -9,12 +9,12 @@
   backend owns the recurrent/conv/KV state and zeroes it per question, so there is no cross-call leak. Never chosen by
   `"auto"`; loading prints a warning that it is experimental.
 - `litert` reads the trained System-1 heads (`head.bin`/`head_score.bin`) when the bundle's graph exposes a
-  post-norm `hidden` output (ct0-edge auto-detects it; `method: "head"`/`"both"`). The current public bundle is
-  logits-only, so heads apply once the hidden-state bundle is published; behaviour is unchanged when the output is absent.
-- The bundle (`manifest.json`, `model.graph.tflite`, `model.weights.bin`, `embed.f16.bin`) is self-hosted via
-  `litertBaseUrl` / `litertRepo`. Measured on the full CT0 bundle (Apple M2 Pro, Chrome WebGPU): 19/20 answers equal to
-  the fp32 reference over 20 decisions (genai int4: 17/20), 9/12 greedy tokens vs HF fp32, ~3.2 s/decision median (vs
-  ~0.5 s for `genai`), 24.8 s load. New entry point `ct0-edge/litert` and a mock-backed test suite.
+  post-norm `hidden` output (ct0-edge auto-detects it; `method: "head"`/`"both"`). The bundles in the LiteRT repo expose
+  it, so the heads apply by default; behaviour is unchanged when the output is absent.
+- Bundles live in the LiteRT repo, one folder per build; `litertQuant` (`"int4"` default, `"int8"`, `"int4-b64"`) picks
+  the folder, `litertBaseUrl` / `litertRepo` self-host. Measured in Chrome WebGPU (Apple M2 Pro, Chrome 156) over 172
+  decisions: all three builds load and answer; median per decision 5.3 s (int4), 5.6 s (int8), 4.7 s (int4-b64), about
+  10x slower than `genai` (~0.5 s). New entry point `ct0-edge/litert`, `litertBundleBase()` and a mock-backed test suite.
 
 ## 0.6.0
 

@@ -23,7 +23,7 @@ import { ask as askImpl, askManyWith, type AskHeads, type AskOptions, type AskRe
 import { loadHead } from "./systemone.js";
 import { checkOrtVersion } from "./ortVersion.js";
 import {
-  RUNTIME_DEFAULTS, defaultMethods, maxSafeTokensFor, resolveRuntimeChoice, detectPlatform, planRuntime, selectRuntime,
+  RUNTIME_DEFAULTS, litertBundleBase, defaultMethods, maxSafeTokensFor, resolveRuntimeChoice, detectPlatform, planRuntime, selectRuntime,
   importOptional, detectCuda, detectWebGPU, DEFAULT_REPOS, DEFAULT_FILES, type RuntimeName, type RuntimeChoice, type DeviceChoice, type Device, type Caps, type Plan, type AskMethod,
 } from "./runtime.js";
 import { defaultCacheDir, localFile, readLocalBytes } from "./nodeFiles.js";
@@ -32,11 +32,11 @@ export { DEFAULT_METHOD, askMany, levelFromCuts } from "./ask.js";
 export type { Backend, GenerateOptions, StateHandle } from "./backend.js";
 export { resolveGenerateOptions, GENERATE_DEFAULTS } from "./backend.js";
 export {
-  RUNTIMES, RUNTIME_LIMITS, RUNTIME_DEFAULTS, MLC_Q4F32_LIB, GENAI_NODE_CPU_ERROR, maxSafeTokensFor, defaultMethods,
+  RUNTIMES, RUNTIME_LIMITS, RUNTIME_DEFAULTS, LITERT_QUANTS, litertBundleBase, MLC_Q4F32_LIB, GENAI_NODE_CPU_ERROR, maxSafeTokensFor, defaultMethods,
   resolveRuntimeChoice, detectPlatform, detectCuda, detectWebGPU, planRuntime, selectRuntime, packagesFor, importOptional,
   DEFAULT_REPOS, DEFAULT_FILES,
 } from "./runtime.js";
-export type { RuntimeName, RuntimeChoice, Device, DeviceChoice, Platform, Caps, Plan, SelectRuntimeDeps, SelectedRuntime } from "./runtime.js";
+export type { RuntimeName, RuntimeChoice, Device, DeviceChoice, Platform, Caps, Plan, SelectRuntimeDeps, SelectedRuntime, LiteRtQuant } from "./runtime.js";
 
 /** WebLLM (MLC) options for `runtime: "webllm"`. */
 export interface MlcOptions {
@@ -91,9 +91,11 @@ export interface LoadOptions {
   /** WebLLM options. */
   mlc?: MlcOptions;
   /** EXPERIMENTAL `runtime: "litert"`: bundle base (manifest.json, model.graph.tflite, model.weights.bin, embed.f16.bin).
-   *  Default `https://huggingface.co/<litertRepo>/resolve/main/litert/` (that repo is NOT published yet). */
+   *  Default `https://huggingface.co/<litertRepo>/resolve/main/litert/<litertQuant>/`. */
   litertBaseUrl?: string;
   litertRepo?: string;
+  /** Which browser build to load from the default repo: "int4" (default, block 32), "int8" or "int4-b64". */
+  litertQuant?: "int4" | "int8" | "int4-b64";
   /** @litertjs/core wasm directory (default: jsDelivr, pinned @litertjs/core@2.6.0). */
   litertWasmUrl?: string;
   /** LiteRT.js WebGPU precision (default "fp32"). */
@@ -274,7 +276,7 @@ export class CT0 {
     const loadLitert = async (dev: Device): Promise<Backend> => {
       const lrt = mods.litert ?? await importOptional("@litertjs/core", () => import(/* webpackIgnore: true */ /* @vite-ignore */ LITERT_PKG), 'runtime "litert"');
       const D = RUNTIME_DEFAULTS.litert;
-      const lbase = absBase(opts.litertBaseUrl ?? `https://huggingface.co/${opts.litertRepo ?? D.repo}/resolve/main/litert/`);
+      const lbase = absBase(litertBundleBase(opts));
       const name = (f: string) => f.replace(/^litert\//, "");
       status(`loading LiteRT.js ${LITERTJS_VERSION} runtime…`);
       try { await lrt.loadLiteRt(opts.litertWasmUrl ?? D.wasm, { jspi: !!(globalThis as any).WebAssembly?.Suspending }); }

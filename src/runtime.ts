@@ -28,9 +28,21 @@ export const DEFAULT_REPOS = {
   onnx: "eduardoworrel/alias3-micro-1026-ONNX",
   mlcQ4f16: "eduardoworrel/alias3-micro-1026-MLC-q4f16_1",
   mlcQ4f32: "eduardoworrel/alias3-micro-1026-MLC-q4f32_1",
-  /** NOT published yet (the LiteRT bundle waits for the owner's OK); pass `litertBaseUrl` to self-host. */
+  /** EXPERIMENTAL LiteRT bundles: one folder per build under `litert/` (see `LITERT_QUANTS`); pass `litertBaseUrl` to self-host. */
   litert: "eduardoworrel/alias3-micro-1026-LiteRT",
 } as const;
+
+/** Browser builds in the LiteRT repo, one folder each under `litert/`. (`litert/fp16/` is native-CPU only and is not loadable here.) */
+export const LITERT_QUANTS = ["int4", "int8", "int4-b64"] as const;
+export type LiteRtQuant = (typeof LITERT_QUANTS)[number];
+
+/** Base URL of a LiteRT bundle folder: an explicit `litertBaseUrl` wins, else `<litertRepo>/resolve/main/litert/<litertQuant>/` (default int4). */
+export function litertBundleBase(o: { litertBaseUrl?: string; litertRepo?: string; litertQuant?: string } = {}): string {
+  if (o.litertBaseUrl) return o.litertBaseUrl;
+  const q = o.litertQuant ?? "int4";
+  if (!(LITERT_QUANTS as readonly string[]).includes(q)) throw new Error(`ct0-edge: litertQuant must be one of ${LITERT_QUANTS.join(", ")} (got ${JSON.stringify(q)})`);
+  return `https://huggingface.co/${o.litertRepo ?? DEFAULT_REPOS.litert}/resolve/main/litert/${q}/`;
+}
 
 /** Head files inside each runtime's repo (graph files: `RUNTIME_DEFAULTS`). */
 export const DEFAULT_FILES = {

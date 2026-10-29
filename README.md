@@ -95,37 +95,39 @@ The original model (PyTorch bf16, as released) answers 54 · 46 · 26; 🟢 = wi
 ### Experimental: `runtime: "litert"` (LiteRT.js)
 
 > ⚠️ **Experimental.** LiteRT.js `@litertjs/core` **2.6.0** (pinned), browser **WebGPU only** (the CT0 weights do not
-> fit the 2 GiB LiteRT.js Wasm heap, so they are streamed into WebGPU buffers), **logits reads only** (the graph has no
-> hidden-state output), never chosen by `"auto"`. Loading prints a console warning saying so.
-> Default bundle repo: `eduardoworrel/alias3-micro-1026-LiteRT` (`litertRepo` / `litertBaseUrl` to self-host).
+> fit the 2 GiB LiteRT.js Wasm heap, so they are streamed into WebGPU buffers), never chosen by `"auto"`. Loading prints
+> a console warning saying so. It reads both the logits and the System-1 readout heads (`head.bin` / `head_score.bin`),
+> which it takes from the `hidden` output of the graph.
+> Default bundle repo: `eduardoworrel/alias3-micro-1026-LiteRT`. `litertQuant` picks the folder, `litertRepo` / `litertBaseUrl` self-host.
 
 ```bash
 npm i ct0-edge @huggingface/transformers @litertjs/core@2.6.0
 ```
 
 ```js
-const ct0 = await CT0.load({ runtime: "litert", litertBaseUrl: "https://your.host/ct0-litert/" });
+const ct0 = await CT0.load({ runtime: "litert" });                          // int4, block 32 (default)
+const ct0b = await CT0.load({ runtime: "litert", litertQuant: "int8" });    // or "int4-b64"
+// self-hosted: CT0.load({ runtime: "litert", litertBaseUrl: "https://your.host/ct0-litert/" })
 // bundle: manifest.json · model.graph.tflite · model.weights.bin (streamed) · embed.f16.bin (rows read with HTTP Range)
 ```
 
 How it works: CT0 exported with litert-torch with the Gated-DeltaNet **decomposed** (LiteRT.js does not register the
-fused `gated_delta_update` op), a GQA fix so the graph is fully WebGPU-delegated, int4 FullyConnected weights moved to
-LiteRT external buffers and streamed with `loadModelAndWeights`. The backend owns the recurrent/conv/KV state (zeros
-per question), so there is no state leak between calls. Server needs: HTTP Range for `embed.f16.bin`.
+fused `gated_delta_update` op), a GQA fix so the graph is fully WebGPU-delegated, the FullyConnected weights moved to
+LiteRT external buffers and streamed with `loadModelAndWeights`, and the post-final-norm hidden state exposed as a
+`hidden` output. The backend owns the recurrent/conv/KV state (zeros per question), so there is no state leak between
+calls. Server needs: HTTP Range for `embed.f16.bin` (a full-file fallback is used when the server ignores it).
 
-Measured on the full CT0 bundle (HF rev `61c0e710`, int4 blockwise-32 FC weights 2.1 GB streamed + fp16 embedding
-rows read on demand), Apple M2 Pro, Chrome WebGPU, 20 questions of our decision set (7 yes/no, 7 choice, 6 severity):
+Measured in Chrome WebGPU (Apple M2 Pro, Chrome 156) over the 172 questions of our decision set, one run per build:
 
-| | `litert` WebGPU | native LiteRT CPU (same bundle) | `genai` int4 (reference) |
+| build | load | time / decision (median · max) | same answers as native CPU |
 |---|---|---|---|
-| answers equal to the fp32 reference | **19/20** | 17/20 | 17/20 |
-| yes/no p vs genai int4 | max \|Δp\| 0.058 | 0.039 | — |
-| greedy 12 tokens vs PyTorch fp32 | 9/12 (first 8 identical) | 9/12 | — |
-| load | 24.8 s | 7.0 s | — |
-| time / decision (median · max) | **3.2 s · 15.5 s** (534 tokens) | 7.3 s · 31 s | ~0.5 s browser |
+| `int4` (block 32, default) | 19.6 s | 5.3 s · 22.5 s | 159/172 |
+| `int8` | 46.4 s | 5.6 s · 30.1 s | 161/172 |
+| `int4-b64` | 23.5 s | 4.7 s · 25.4 s | 154/172 |
+| for reference: `genai` int4 | — | ~0.5 s | — |
 
-Not in `"auto"`: it is about 6x slower per decision than `genai` in the browser (the export has a 16-token prefill
-signature; a larger one needs more than 62 GB of RAM to export).
+Not in `"auto"`: it is about 10x slower per decision than `genai` in the browser. `litert/fp16/` in the repo is for
+native CPU runs and is not loadable by this runtime (`litertQuant` accepts int4, int8, int4-b64).
 
 ## API
 

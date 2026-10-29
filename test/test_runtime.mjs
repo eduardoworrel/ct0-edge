@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   CT0, detectPlatform, detectCuda, planRuntime, selectRuntime, resolveRuntimeChoice, importOptional, packagesFor,
-  RUNTIMES, RUNTIME_LIMITS, RUNTIME_DEFAULTS, GENAI_NODE_CPU_ERROR, MLC_Q4F32_LIB, maxSafeTokensFor, defaultMethods, DEFAULT_METHOD,
+  RUNTIMES, RUNTIME_LIMITS, RUNTIME_DEFAULTS, LITERT_QUANTS, litertBundleBase, GENAI_NODE_CPU_ERROR, MLC_Q4F32_LIB, maxSafeTokensFor, defaultMethods, DEFAULT_METHOD,
   detectWebGPU, DEFAULT_REPOS, DEFAULT_FILES,
 } from "../dist/ct0.js";
 import { YES_ID, NO_ID } from "../dist/ask.js";
@@ -284,6 +284,16 @@ console.log("\nCT0.load webllm (fake browser):");
     if (saved.document === undefined) delete globalThis.document;
   }
 }
+
+console.log("\nlitertBundleBase (EXPERIMENTAL litert bundle URLs, one folder per build):");
+ok(JSON.stringify(LITERT_QUANTS) === '["int4","int8","int4-b64"]', "browser builds: int4, int8, int4-b64 (fp16 is native-CPU only, not listed)");
+ok(litertBundleBase() === "https://huggingface.co/eduardoworrel/alias3-micro-1026-LiteRT/resolve/main/litert/int4/", "default = the int4 folder of the default repo");
+ok(litertBundleBase({ litertQuant: "int8" }).endsWith("/resolve/main/litert/int8/"), "litertQuant int8 -> litert/int8/");
+ok(litertBundleBase({ litertQuant: "int4-b64" }).endsWith("/resolve/main/litert/int4-b64/"), "litertQuant int4-b64 -> litert/int4-b64/");
+ok(litertBundleBase({ litertRepo: "me/fork", litertQuant: "int8" }) === "https://huggingface.co/me/fork/resolve/main/litert/int8/", "litertRepo is honoured");
+ok(litertBundleBase({ litertBaseUrl: "https://your.host/b/", litertQuant: "int8" }) === "https://your.host/b/", "explicit litertBaseUrl wins over litertQuant");
+ok(throws(() => litertBundleBase({ litertQuant: "fp16" }), /litertQuant must be one of int4, int8, int4-b64/), "fp16 is rejected: it is not a browser build");
+ok(throws(() => litertBundleBase({ litertQuant: "int2" }), /litertQuant must be one of/), "unknown quant rejected");
 
 console.log(`\n${pass} ok, ${fail} failures`);
 process.exit(fail ? 1 : 0);

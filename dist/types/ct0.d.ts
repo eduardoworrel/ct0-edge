@@ -22,8 +22,8 @@ export type { AskHeads, AskOptions, AskResult, AskQuestion, AskManyQuestion } fr
 export { DEFAULT_METHOD, askMany, levelFromCuts } from "./ask.js";
 export type { Backend, GenerateOptions, StateHandle } from "./backend.js";
 export { resolveGenerateOptions, GENERATE_DEFAULTS } from "./backend.js";
-export { RUNTIMES, RUNTIME_LIMITS, RUNTIME_DEFAULTS, MLC_Q4F32_LIB, GENAI_NODE_CPU_ERROR, maxSafeTokensFor, defaultMethods, resolveRuntimeChoice, detectPlatform, detectCuda, detectWebGPU, planRuntime, selectRuntime, packagesFor, importOptional, DEFAULT_REPOS, DEFAULT_FILES, } from "./runtime.js";
-export type { RuntimeName, RuntimeChoice, Device, DeviceChoice, Platform, Caps, Plan, SelectRuntimeDeps, SelectedRuntime } from "./runtime.js";
+export { RUNTIMES, RUNTIME_LIMITS, RUNTIME_DEFAULTS, LITERT_QUANTS, litertBundleBase, MLC_Q4F32_LIB, GENAI_NODE_CPU_ERROR, maxSafeTokensFor, defaultMethods, resolveRuntimeChoice, detectPlatform, detectCuda, detectWebGPU, planRuntime, selectRuntime, packagesFor, importOptional, DEFAULT_REPOS, DEFAULT_FILES, } from "./runtime.js";
+export type { RuntimeName, RuntimeChoice, Device, DeviceChoice, Platform, Caps, Plan, SelectRuntimeDeps, SelectedRuntime, LiteRtQuant } from "./runtime.js";
 /** WebLLM (MLC) options for `runtime: "webllm"`. */
 export interface MlcOptions {
     /** MLC build: `"q4f32_1"` (default, faithful; its lib is the official WebLLM prebuilt wasm) or `"q4f16_1"` (faster, less faithful; wasm in its repo). */
@@ -80,9 +80,11 @@ export interface LoadOptions {
     /** WebLLM options. */
     mlc?: MlcOptions;
     /** EXPERIMENTAL `runtime: "litert"`: bundle base (manifest.json, model.graph.tflite, model.weights.bin, embed.f16.bin).
-     *  Default `https://huggingface.co/<litertRepo>/resolve/main/litert/` (that repo is NOT published yet). */
+     *  Default `https://huggingface.co/<litertRepo>/resolve/main/litert/<litertQuant>/`. */
     litertBaseUrl?: string;
     litertRepo?: string;
+    /** Which browser build to load from the default repo: "int4" (default, block 32), "int8" or "int4-b64". */
+    litertQuant?: "int4" | "int8" | "int4-b64";
     /** @litertjs/core wasm directory (default: jsDelivr, pinned @litertjs/core@2.6.0). */
     litertWasmUrl?: string;
     /** LiteRT.js WebGPU precision (default "fp32"). */
