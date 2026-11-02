@@ -78,6 +78,7 @@ await CT0.load({ runtime: "genai" });           // ONNX Runtime GenAI graph, int
 await CT0.load({ runtime: "decode-only" });     // ONNX Runtime Web / Node, q4
 await CT0.load({ runtime: "transformers.js" }); // optimum export via transformers.js, q4
 await CT0.load({ runtime: "webllm" });          // MLC, q4f32_1
+// await CT0.load({ runtime: "litert" });       // LiteRT.js, opt-in, never auto — see "runtime: litert" below
 ```
 
 `"auto"`: browser with WebGPU → `genai` (fallback `decode-only` on WebGPU); browser without WebGPU → `decode-only` on WASM;
