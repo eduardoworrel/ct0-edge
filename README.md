@@ -246,6 +246,11 @@ const be = await createWebllm(webllm, { modelId: "alias3-micro-1026-q4f16_1", mo
 
 Every repo (ONNX and MLC) includes the heads: `heads/head.bin` (yes/no, multiple choice) and `heads/head_score.bin` (severity).
 
+## Documents
+
+- *System-1 at the Edge: One-Pass Security Decisions of a 4B Model in the Browser on Four Runtimes*, technical report, version 2 (November 2026): [PDF](docs/paper/system1-edge_en.pdf) · [HTML](docs/paper/system1-edge_en.html). Measures every published build against the original model on a 172-question decision test set.
+- *Best CT0 build for the extension, and the recipe to rebuild it*: [PDF](docs/best-build/01-best-model-and-recipe.pdf) · [HTML](docs/best-build/01-best-model-and-recipe.html). The recommended build (ONNX Runtime GenAI, int4, WebGPU), the recipes to rebuild it and `head_score.bin`, and how to use them with ct0-edge.
+
 ## Citation
 
 ```bibtex
@@ -255,6 +260,15 @@ Every repo (ONNX and MLC) includes the heads: `heads/head.bin` (yes/no, multiple
   journal = {arXiv preprint arXiv:2610.16550},
   year    = {2026},
   url     = {https://arxiv.org/abs/2610.16550}
+}
+
+@techreport{worrel2026system1edge,
+  title       = {System-1 at the Edge: One-Pass Security Decisions of a 4B Model in the Browser on Four Runtimes},
+  author      = {Worrel, Eduardo},
+  institution = {ct0-edge},
+  type        = {Technical report, version 2},
+  year        = {2026},
+  url         = {https://github.com/eduardoworrel/ct0-edge/blob/main/docs/paper/system1-edge_en.pdf}
 }
 ```
 

@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System-1 at the Edge</title>
+<style>
+:root{ --ink:#000; --grey:#7f7f7f; --bg:#fff; --muted:#4a4f57;
+  --ok:#dcefdc; --pre:#fbeccb; --neg:#f8d9d5; --neg-tx:#86231b; --gain:#dbe9f7;
+  --nf:#d9d9d9; --pend:#ececec; --zebra:#f6f6f6; }
+@page{ size:A4; margin:22mm 0 22mm 0;
+  @bottom-center{ content: counter(page); font-family:"Latin Modern Roman","CMU Serif","Computer Modern Serif",Georgia,"Times New Roman",serif; font-size:10pt; } }
+*{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+html,body{ background:var(--bg); color:var(--ink); }
+body{ font-family:"Latin Modern Roman","CMU Serif","Computer Modern Serif","Times New Roman",Times,Georgia,serif;
+  font-size:11pt; line-height:1.38; margin:0 auto; max-width:170mm; padding:0 16px; position:relative; text-rendering:optimizeLegibility; }
+p{ margin:0 0 1.6mm; text-align:justify; hyphens:auto; -webkit-hyphens:auto; }
+code,.tt{ font-family:"Latin Modern Mono","CMU Typewriter Text",Menlo,Consolas,monospace; font-size:0.9em; hyphens:none; overflow-wrap:anywhere; }
+.stamp{ position:absolute; left:-15mm; top:205mm; transform:rotate(-90deg); transform-origin:left top;
+  font-family:"Times New Roman",Times,serif; font-size:19pt; color:var(--grey); white-space:nowrap; letter-spacing:0.02em; }
+.titleblock{ text-align:center; margin:4mm 0 6mm; }
+.titleblock h1{ font-size:17.5pt; font-weight:700; line-height:1.25; margin:0 0 4mm; }
+.authors{ font-size:12pt; margin-bottom:1.2mm; }
+.affil{ font-size:10.5pt; font-style:italic; margin-bottom:1mm; }
+.date{ font-size:10.5pt; margin-top:2.5mm; }
+.abstract{ margin:0 8mm 4mm; font-size:10.5pt; }
+.abstract h2{ text-align:center; font-size:11pt; margin:0 0 2mm; }
+.abstract p{ margin-bottom:1.6mm; }
+h2{ font-size:13.5pt; font-weight:700; margin:7mm 0 2.5mm; break-after:avoid; page-break-after:avoid; }
+h2.pb{ break-before:page; page-break-before:always; margin-top:0; }
+h3{ font-size:12pt; font-weight:700; margin:5mm 0 1.8mm; break-after:avoid; page-break-after:avoid; }
+h2 .num, h3 .num{ display:inline-block; min-width:1.6em; margin-right:0.4em; }
+h3 .num{ min-width:2.2em; }
+ul,ol{ margin:1mm 0 2mm; padding-left:6mm; }
+li{ margin-bottom:0.8mm; }
+.take{ font-weight:700; margin:2mm 0 2mm; padding:1.4mm 3mm; border-left:4px solid #000; background:#f4f4f4; break-inside:avoid; text-align:left; }
+.cav{ font-size:10.5pt; margin:0.5mm 0 3mm; }
+.cav li{ margin-bottom:0.4mm; }
+
+/* runtime logos (nominative use) */
+svg.lg{ width:1.05em; height:1.05em; vertical-align:-0.2em; margin-right:0.35em; }
+.rt{ white-space:nowrap; }
+
+/* tables */
+.tbl{ margin:2.5mm 0 3mm; break-inside:avoid; page-break-inside:avoid; }
+.tbl.split{ break-inside:auto; page-break-inside:auto; }
+.cap{ font-size:10pt; margin:0 0 1.2mm; text-align:justify; line-height:1.3; }
+.cap b{ font-weight:700; }
+.rule{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:8.8pt; margin:0 0 1.2mm; display:flex; flex-wrap:wrap; gap:0.6mm 3mm; align-items:center; }
+.rule .sw{ display:inline-block; width:3.8mm; height:3mm; border:1px solid #888; vertical-align:-0.4mm; margin-right:0.8mm; }
+.sort{ font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:8.8pt; color:var(--muted); margin:0 0 1mm; }
+table{ border-collapse:collapse; width:100%; font-size:11pt; line-height:1.28; }
+table thead tr:first-child th{ border-top:1.3px solid #000; }
+table thead tr:last-child th{ border-bottom:0.7px solid #000; }
+table tbody tr:last-child td{ border-bottom:1.3px solid #000; }
+th{ font-weight:700; text-align:left; padding:1.3mm 1.8mm 1.1mm; vertical-align:bottom; }
+td{ padding:1.1mm 1.8mm; vertical-align:top; }
+tbody tr:nth-child(even) td{ background:var(--zebra); }
+td.n, th.n{ text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+td.n{ font-size:12pt; }
+.t5 td:last-child{ white-space:nowrap; font-size:9.5pt; } .t5 td{ padding-top:0.8mm; padding-bottom:0.8mm; }
+td.c, th.c{ text-align:center; }
+td.k{ text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; width:6mm; }
+tr.mid td{ border-top:0.5px solid #000; }
+tr{ break-inside:avoid; page-break-inside:avoid; }
+thead{ display:table-header-group; }
+.sm table{ font-size:10.5pt; } .sm td.n{ font-size:11.5pt; }
+tbody tr.g td{ background:var(--ok); } tbody tr.a td{ background:var(--pre); } tbody tr.r td{ background:var(--neg); }
+tbody tr.p td{ background:var(--pend); } tbody tr.w td{ background:#fff; }
+td.cg{ background:var(--ok)!important; } td.ca{ background:var(--pre)!important; } td.cb{ background:var(--gain)!important; }
+td.cr{ background:var(--neg)!important; color:var(--neg-tx); font-weight:700; } td.cnf{ background:var(--nf)!important; }
+figure{ margin:3mm 0 3mm; break-inside:avoid; page-break-inside:avoid; }
+figure svg{ max-width:100%; }
+figure.s svg{ width:88%!important; margin:0 auto; }
+figcaption{ font-size:10pt; margin-top:1.2mm; text-align:justify; line-height:1.3; }
+.refs{ font-size:10pt; }
+.refs ol{ list-style:none; padding-left:0; }
+.refs li{ display:grid; grid-template-columns:2.4em 1fr; text-align:left; margin-bottom:1.2mm; }
+a{ color:inherit; text-decoration:none; }
+@media print{ body{ margin:0 20mm; max-width:none; padding:0; } }
+@media screen{ body{ padding-top:16px; padding-bottom:48px; } .stamp{ display:none; } }
+@media (max-width:600px){ .abstract{ margin:0 0 6mm; } .tbl{ overflow-x:auto; } }
+
+.refs{ font-size:9pt; } .refs ol.ay{ list-style:none; padding-left:0; }
+.refs ol.ay li .rn{display:inline-block;min-width:7mm;text-indent:0;} .refs ol.ay li{ display:block; padding-left:5mm; text-indent:-5mm; margin-bottom:0.5mm; text-align:left; }
+.refs h2{ margin-top:5mm; }
+.contrib{ margin:0.5mm 0 1.5mm; padding-left:6mm; } .contrib li{ margin-bottom:0.6mm; text-align:justify; }
+h2.app{ break-before:page; page-break-before:always; margin-top:0; }
+.appx h3{ font-size:11.5pt; margin-top:3mm; } .appx p{ font-size:10pt; }
+.appx table{ font-size:9.3pt; } .appx td.n{ font-size:9.6pt; } .appx td{ padding-top:0.5mm!important; padding-bottom:0.5mm!important; }
+figure.s svg{ width:56%!important; } figure.m svg{ width:66%!important; display:block; margin:0 auto; }
+figure{ margin:2mm 0 2mm; } figcaption{ font-size:9.5pt; }
+.tbl.sm table{ font-size:9.6pt; } .tbl.sm td.n{ font-size:9.8pt; } .tbl.sm td{ padding-top:0.5mm; padding-bottom:0.5mm; }
+h2{ margin:5mm 0 2mm; } h3{ margin:3.5mm 0 1.5mm; }
+</style>
+</head>
+<body>
+<!--FIG:logos-->
+<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><defs><symbol id="lg-tjs" viewBox="0 0 95 88" preserveAspectRatio="xMidYMid meet"><path fill="#FFD21E" d="M47.21 76.5a34.75 34.75 0 1 0 0-69.5 34.75 34.75 0 0 0 0 69.5Z" />
+	<path
+		fill="#FF9D0B"
+		d="M81.96 41.75a34.75 34.75 0 1 0-69.5 0 34.75 34.75 0 0 0 69.5 0Zm-73.5 0a38.75 38.75 0 1 1 77.5 0 38.75 38.75 0 0 1-77.5 0Z"
+	/>
+	<path
+		fill="#3A3B45"
+		d="M58.5 32.3c1.28.44 1.78 3.06 3.07 2.38a5 5 0 1 0-6.76-2.07c.61 1.15 2.55-.72 3.7-.32ZM34.95 32.3c-1.28.44-1.79 3.06-3.07 2.38a5 5 0 1 1 6.76-2.07c-.61 1.15-2.56-.72-3.7-.32Z"
+	/>
+	<path
+		fill="#FF323D"
+		d="M46.96 56.29c9.83 0 13-8.76 13-13.26 0-2.34-1.57-1.6-4.09-.36-2.33 1.15-5.46 2.74-8.9 2.74-7.19 0-13-6.88-13-2.38s3.16 13.26 13 13.26Z"
+	/>
+	<path
+		fill="#3A3B45"
+		fill-rule="evenodd"
+		d="M39.43 54a8.7 8.7 0 0 1 5.3-4.49c.4-.12.81.57 1.24 1.28.4.68.82 1.37 1.24 1.37.45 0 .9-.68 1.33-1.35.45-.7.89-1.38 1.32-1.25a8.61 8.61 0 0 1 5 4.17c3.73-2.94 5.1-7.74 5.1-10.7 0-2.34-1.57-1.6-4.09-.36l-.14.07c-2.31 1.15-5.39 2.67-8.77 2.67s-6.45-1.52-8.77-2.67c-2.6-1.29-4.23-2.1-4.23.29 0 3.05 1.46 8.06 5.47 10.97Z"
+		clip-rule="evenodd"
+	/>
+	<path
+		fill="#FF9D0B"
+		d="M70.71 37a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5ZM24.21 37a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5ZM17.52 48c-1.62 0-3.06.66-4.07 1.87a5.97 5.97 0 0 0-1.33 3.76 7.1 7.1 0 0 0-1.94-.3c-1.55 0-2.95.59-3.94 1.66a5.8 5.8 0 0 0-.8 7 5.3 5.3 0 0 0-1.79 2.82c-.24.9-.48 2.8.8 4.74a5.22 5.22 0 0 0-.37 5.02c1.02 2.32 3.57 4.14 8.52 6.1 3.07 1.22 5.89 2 5.91 2.01a44.33 44.33 0 0 0 10.93 1.6c5.86 0 10.05-1.8 12.46-5.34 3.88-5.69 3.33-10.9-1.7-15.92-2.77-2.78-4.62-6.87-5-7.77-.78-2.66-2.84-5.62-6.25-5.62a5.7 5.7 0 0 0-4.6 2.46c-1-1.26-1.98-2.25-2.86-2.82A7.4 7.4 0 0 0 17.52 48Zm0 4c.51 0 1.14.22 1.82.65 2.14 1.36 6.25 8.43 7.76 11.18.5.92 1.37 1.31 2.14 1.31 1.55 0 2.75-1.53.15-3.48-3.92-2.93-2.55-7.72-.68-8.01.08-.02.17-.02.24-.02 1.7 0 2.45 2.93 2.45 2.93s2.2 5.52 5.98 9.3c3.77 3.77 3.97 6.8 1.22 10.83-1.88 2.75-5.47 3.58-9.16 3.58-3.81 0-7.73-.9-9.92-1.46-.11-.03-13.45-3.8-11.76-7 .28-.54.75-.76 1.34-.76 2.38 0 6.7 3.54 8.57 3.54.41 0 .7-.17.83-.6.79-2.85-12.06-4.05-10.98-8.17.2-.73.71-1.02 1.44-1.02 3.14 0 10.2 5.53 11.68 5.53.11 0 .2-.03.24-.1.74-1.2.33-2.04-4.9-5.2-5.21-3.16-8.88-5.06-6.8-7.33.24-.26.58-.38 1-.38 3.17 0 10.66 6.82 10.66 6.82s2.02 2.1 3.25 2.1c.28 0 .52-.1.68-.38.86-1.46-8.06-8.22-8.56-11.01-.34-1.9.24-2.85 1.31-2.85Z"
+	/>
+	<path
+		fill="#FFD21E"
+		d="M38.6 76.69c2.75-4.04 2.55-7.07-1.22-10.84-3.78-3.77-5.98-9.3-5.98-9.3s-.82-3.2-2.69-2.9c-1.87.3-3.24 5.08.68 8.01 3.91 2.93-.78 4.92-2.29 2.17-1.5-2.75-5.62-9.82-7.76-11.18-2.13-1.35-3.63-.6-3.13 2.2.5 2.79 9.43 9.55 8.56 11-.87 1.47-3.93-1.71-3.93-1.71s-9.57-8.71-11.66-6.44c-2.08 2.27 1.59 4.17 6.8 7.33 5.23 3.16 5.64 4 4.9 5.2-.75 1.2-12.28-8.53-13.36-4.4-1.08 4.11 11.77 5.3 10.98 8.15-.8 2.85-9.06-5.38-10.74-2.18-1.7 3.21 11.65 6.98 11.76 7.01 4.3 1.12 15.25 3.49 19.08-2.12Z"
+	/>
+	<path
+		fill="#FF9D0B"
+		d="M77.4 48c1.62 0 3.07.66 4.07 1.87a5.97 5.97 0 0 1 1.33 3.76 7.1 7.1 0 0 1 1.95-.3c1.55 0 2.95.59 3.94 1.66a5.8 5.8 0 0 1 .8 7 5.3 5.3 0 0 1 1.78 2.82c.24.9.48 2.8-.8 4.74a5.22 5.22 0 0 1 .37 5.02c-1.02 2.32-3.57 4.14-8.51 6.1-3.08 1.22-5.9 2-5.92 2.01a44.33 44.33 0 0 1-10.93 1.6c-5.86 0-10.05-1.8-12.46-5.34-3.88-5.69-3.33-10.9 1.7-15.92 2.78-2.78 4.63-6.87 5.01-7.77.78-2.66 2.83-5.62 6.24-5.62a5.7 5.7 0 0 1 4.6 2.46c1-1.26 1.98-2.25 2.87-2.82A7.4 7.4 0 0 1 77.4 48Zm0 4c-.51 0-1.13.22-1.82.65-2.13 1.36-6.25 8.43-7.76 11.18a2.43 2.43 0 0 1-2.14 1.31c-1.54 0-2.75-1.53-.14-3.48 3.91-2.93 2.54-7.72.67-8.01a1.54 1.54 0 0 0-.24-.02c-1.7 0-2.45 2.93-2.45 2.93s-2.2 5.52-5.97 9.3c-3.78 3.77-3.98 6.8-1.22 10.83 1.87 2.75 5.47 3.58 9.15 3.58 3.82 0 7.73-.9 9.93-1.46.1-.03 13.45-3.8 11.76-7-.29-.54-.75-.76-1.34-.76-2.38 0-6.71 3.54-8.57 3.54-.42 0-.71-.17-.83-.6-.8-2.85 12.05-4.05 10.97-8.17-.19-.73-.7-1.02-1.44-1.02-3.14 0-10.2 5.53-11.68 5.53-.1 0-.19-.03-.23-.1-.74-1.2-.34-2.04 4.88-5.2 5.23-3.16 8.9-5.06 6.8-7.33-.23-.26-.57-.38-.98-.38-3.18 0-10.67 6.82-10.67 6.82s-2.02 2.1-3.24 2.1a.74.74 0 0 1-.68-.38c-.87-1.46 8.05-8.22 8.55-11.01.34-1.9-.24-2.85-1.31-2.85Z"
+	/>
+	<path
+		fill="#FFD21E"
+		d="M56.33 76.69c-2.75-4.04-2.56-7.07 1.22-10.84 3.77-3.77 5.97-9.3 5.97-9.3s.82-3.2 2.7-2.9c1.86.3 3.23 5.08-.68 8.01-3.92 2.93.78 4.92 2.28 2.17 1.51-2.75 5.63-9.82 7.76-11.18 2.13-1.35 3.64-.6 3.13 2.2-.5 2.79-9.42 9.55-8.55 11 .86 1.47 3.92-1.71 3.92-1.71s9.58-8.71 11.66-6.44c2.08 2.27-1.58 4.17-6.8 7.33-5.23 3.16-5.63 4-4.9 5.2.75 1.2 12.28-8.53 13.36-4.4 1.08 4.11-11.76 5.3-10.97 8.15.8 2.85 9.05-5.38 10.74-2.18 1.69 3.21-11.65 6.98-11.76 7.01-4.31 1.12-15.26 3.49-19.08-2.12Z"
+	/>
+</symbol><symbol id="lg-edge" viewBox="0 0 53.2 52" preserveAspectRatio="xMidYMid meet"><path fill="#545554" d="M40.5,9l8.7,16c-0.3,0.4-0.5,0.9-0.5,1.4c0,0.2,0,0.4,0.1,0.6l-11.4,7.8c-0.1-0.1-0.2-0.1-0.3-0.2L40.5,9 L40.5,9"/><path fill="#3E3E3D" d="M37.1,38.4c0.7-0.3,1.2-1.1,1.2-1.9c0-0.2,0-0.4-0.1-0.5l10.4-7.1L38.1,47.1L37.1,38.4z"/><path fill="#4D4C4D" d="M34.5,37.9c0.3,0.3,0.7,0.5,1.1,0.6l1,8.9c-0.4,0.2-0.8,0.6-1,1l-21.5-2.1L34.5,37.9z"/><path fill="#5D5D5D" d="M15,20.1c0.3-0.1,0.6-0.2,0.8-0.3l18.3,15.9C34,35.9,34,36.2,34,36.5l0,0.1L13.5,45c-0.3-0.4-0.8-0.8-1.3-0.9 L15,20.1z"/><path fill="#4D4C4D" d="M4.5,24.9c0-0.1,0-0.3,0-0.4l8.6-5.1c0.2,0.2,0.4,0.3,0.6,0.4l-2.8,24l-7-17.3C4.2,26.1,4.5,25.6,4.5,24.9z"/><path fill="#3E3E3D" d="M14.2,15.9c-1,0.2-1.8,1-1.8,2.1l0,0.1l-7.6,4.5L16.6,5.7L14.2,15.9z"/><path fill="#545554" d="M37.6,6.9l-21.7,9.5c-0.1-0.1-0.2-0.1-0.2-0.2l2.8-11.8l0.1,0c0.8,0,1.4-0.4,1.8-1L37.6,6.9L37.6,6.9z"/><path fill="#717272" d="M38,8.3c0.3,0.3,0.6,0.6,1,0.7l-3.4,25.4c-0.2,0-0.4,0.1-0.6,0.2l-18.5-16c0-0.2,0.1-0.4,0.1-0.6 c0-0.1,0-0.3,0-0.4L38,8.3z"/><path fill="#FFFFFF" d="M50.8,24.2c-0.1,0-0.2,0-0.3,0L41.6,8c0.2-0.3,0.2-0.6,0.2-1c0-1.2-1-2.1-2.1-2.1c-0.6,0-1.2,0.3-1.5,0.7 L20.6,2c-0.1-1.1-1-1.9-2.1-1.9c-1.2,0-2.1,1-2.1,2.1c0,0.4,0.1,0.7,0.2,1L2.9,22.9c-0.2,0-0.4-0.1-0.6-0.1c-1.2,0-2.1,1-2.1,2.1 c0,1.2,1,2.1,2.1,2.1l0.1,0l7.4,18.3c-0.1,0.3-0.2,0.6-0.2,0.9c0,1.2,1,2.1,2.1,2.1c0.6,0,1.2-0.3,1.5-0.7l22.2,2.2 c0.2,0.9,1.1,1.6,2.1,1.6c1.2,0,2.1-1,2.1-2.1c0-0.5-0.2-1-0.5-1.4l11.2-19.5c0.1,0,0.2,0,0.4,0c1.2,0,2.1-1,2.1-2.1 C52.9,25.2,52,24.2,50.8,24.2z M38,8.3c0.3,0.3,0.6,0.6,1,0.7l-3.4,25.4c-0.2,0-0.4,0.1-0.6,0.2l-18.5-16c0-0.2,0.1-0.4,0.1-0.6 c0-0.1,0-0.3,0-0.4L38,8.3z M48.7,27l-11.4,7.8c-0.1-0.1-0.2-0.1-0.3-0.2L40.5,9l0,0l8.7,16c-0.3,0.4-0.5,0.9-0.5,1.4 C48.6,26.6,48.7,26.8,48.7,27z M14.2,15.9c-1,0.2-1.8,1-1.8,2.1l0,0.1l-7.6,4.5L16.6,5.7L14.2,15.9z M15,20.1 c0.3-0.1,0.6-0.2,0.8-0.3l18.3,15.9C34,35.9,34,36.2,34,36.5l0,0.1L13.5,45c-0.3-0.4-0.8-0.8-1.3-0.9L15,20.1z M34.5,37.9 c0.3,0.3,0.7,0.5,1.1,0.6l1,8.9c-0.4,0.2-0.8,0.6-1,1l-21.5-2.1L34.5,37.9z M37.1,38.4c0.7-0.3,1.2-1.1,1.2-1.9 c0-0.2,0-0.4-0.1-0.5l10.4-7.1L38.1,47.1L37.1,38.4z M37.6,6.9l-21.7,9.5c-0.1-0.1-0.2-0.1-0.2-0.2l2.8-11.8l0.1,0 c0.8,0,1.4-0.4,1.8-1L37.6,6.9L37.6,6.9z M4.5,24.9c0-0.1,0-0.3,0-0.4l8.6-5.1c0.2,0.2,0.4,0.3,0.6,0.4l-2.8,24l-7-17.3 C4.2,26.1,4.5,25.6,4.5,24.9z"/></symbol><symbol id="lg-mlc" viewBox="23 155 111 111" preserveAspectRatio="xMidYMid meet"><path fill="#062578" fill-rule="evenodd" clip-rule="evenodd" d="M 124.8,208.2 H 82.7 c -1.4,0 -2.6,1.2 -2.6,2.6 v 7.5 7.5 3.4 c 1.7,-0.2 3.3,0.1 4.7,0.9 v -11.8 -5.4 h 37.9 v 49.9 H 84.8 v -4.6 -11.1 c -1.1,0.8 -2.3,1.4 -3.4,2 -0.4,0.2 -0.8,0.4 -1.2,0.5 v 9.5 3.6 2.1 c 0,1.4 1.2,2.6 2.6,2.6 h 42.1 c 1.4,0 2.6,-1.1 2.6,-2.6 v -54.2 c -0.1,-1.2 -1.3,-2.4 -2.7,-2.4 z m -44.6,38.5 c -3,1.4 -8.3,2.7 -11.5,3.4 -3.6,0.8 -14.2,3.2 -15.1,-2.5 -0.7,-4.7 11.6,-9.9 14.8,-11.3 2.9,-1.3 5.9,-2.4 8.8,-3.6 3.2,-1.2 6.6,-1.7 8.2,2.3 0.7,1.7 0.9,3.2 0.9,5 v 0.2 0.2 c -0.4,3.1 -3.4,5.1 -6.1,6.3 z m 10.6,-51.3 v 0 c 1.4,-0.1 2.7,0.9 2.8,2.4 l 0.4,4.9 c 0.1,1.4 -0.9,2.7 -2.4,2.8 v 0 c -1.4,0.1 -2.7,-0.9 -2.8,-2.4 l -0.4,-4.9 c -0.1,-1.4 1,-2.6 2.4,-2.8 z m 18.8,10.9 c 0,-2.9 -0.2,-5.7 -0.4,-8.4 v 0 c -0.1,-0.9 -0.2,-1.8 -0.3,-2.7 v -0.1 -0.2 c -0.5,-3.3 -1.1,-6.6 -1.9,-10 -0.8,-3.3 -3.7,-5.4 -7,-5.5 -6.1,-0.1 -12.3,-0.2 -18.4,0 -1,-1.9 -4.2,-3.1 -7.9,-2.9 L 69.5,167 c 0.8,-0.7 1.2,-1.8 1.1,-3 -0.2,-2 -1.9,-3.5 -3.9,-3.3 -2,0.2 -3.5,1.9 -3.3,3.9 0.2,1.9 1.7,3.3 3.6,3.3 l 4,9 c -2.6,0.7 -4.6,2.2 -5.1,3.9 -5.8,0.8 -11.5,2 -17.2,3.1 -0.7,0.1 -1.3,0.4 -1.9,0.6 -6.4,1.6 -13,5.1 -13,5.1 -0.1,0.8 -0.2,1.7 -0.2,2.5 0.3,-0.1 0.6,-0.1 1,-0.2 5,-0.4 9.6,4.7 10.2,11.5 0.6,6.8 -3,12.7 -8,13.1 -0.4,0 -0.8,0 -1.1,0 0.2,0.9 0.4,1.8 0.7,2.6 4.2,2.3 9.9,3.8 13.4,4.6 v 0 c 0.8,0.3 1.7,0.5 2.6,0.5 8.6,0.2 17.3,0.3 25.9,-0.5 h 0.3 v -6.3 c -5.8,0.5 -11.8,0.5 -20.8,0.3 -1.7,0 -2.9,-1.1 -3.4,-2.5 -2,-7.2 -2.5,-14.8 -2,-22.9 0.1,-1.5 1.2,-2.8 2.9,-3.1 1.6,-0.3 3.2,-0.6 4.6,-0.9 0.7,-0.1 2.5,-0.5 3.8,-0.7 v 0 c 1,-0.2 2.1,-0.4 3.1,-0.6 3.3,0.6 5.6,5.4 10.5,4.6 5,-0.1 6.4,-5.2 9.5,-6.3 2.3,0 4.6,0 6.9,0.1 1.1,0 2.1,0 3.9,0.1 1.7,0 3,1 3.4,2.5 0.4,1.6 0.7,3.2 1,4.8 0.6,5.4 0.9,9.8 0.8,13.2 h 6.8 z m -75.1,-7.8 c 2,-0.2 3.8,2.5 4.1,6 0.3,3.5 -1,6.4 -3,6.6 -1,0.1 -1.9,-0.5 -2.6,-1.5 0.4,0.3 0.9,0.5 1.3,0.4 1.5,-0.1 2.6,-2.5 2.3,-5.3 -0.2,-2.8 -1.7,-5 -3.2,-4.8 -0.5,0 -0.9,0.3 -1.2,0.7 0.5,-1.3 1.3,-2.1 2.3,-2.1 z M 77,182.4 c 1.6,0 2.9,1.3 2.9,2.9 0,1.6 -1.3,2.9 -2.9,2.9 -1.6,0 -2.9,-1.3 -2.9,-2.9 -0.1,-1.6 1.3,-2.9 2.9,-2.9 z m -10.3,15.2 v 0 c 1.4,-0.1 2.7,0.9 2.8,2.4 l 0.4,4.9 c 0.1,1.4 -0.9,2.7 -2.4,2.8 v 0 c -1.4,0.1 -2.7,-0.9 -2.8,-2.4 l -0.4,-4.9 c -0.1,-1.4 1,-2.7 2.4,-2.8 z m -32.2,-3.1 c 3.7,-0.3 7.1,3.9 7.6,9.4 0.5,5.5 -2.1,10.2 -5.9,10.6 -3.7,0.3 -7.1,-3.9 -7.6,-9.4 -0.5,-5.6 2.1,-10.3 5.9,-10.6 z m 43.7,66.1 c -3.9,-1 -7.3,-3.6 -8.8,-7.9 2.7,-0.6 5.9,-1.3 8.8,-2.3 z m -10.9,-26.8 -0.7,-7.3 11.6,-0.6 v 3.6 c -0.6,0.2 -1.3,0.4 -1.9,0.6 -3,1.1 -6,2.3 -8.9,3.6 z m -13.1,-0.2 c 3.5,-2.6 7.9,-2.5 9.8,0.1 0.3,0.4 0.5,0.8 0.6,1.3 -4.3,1.9 -10.3,5 -12.6,8.8 -0.3,-0.2 -0.6,-0.5 -0.8,-0.8 -1.9,-2.6 -0.6,-6.8 3,-9.4 z m 48.6,10.7 c 0.7,-0.2 1.4,-0.1 2.1,0 l 0.8,-1.4 0.3,0.1 c 0.7,0.2 1.3,0.6 1.9,1.1 l 0.3,0.2 -0.8,1.4 c 0.2,0.3 0.4,0.5 0.6,0.8 0.2,0.3 0.3,0.6 0.4,0.9 h 1.6 l 0.1,0.4 c 0.1,0.7 0.1,1.5 0,2.2 l -0.1,0.4 h -1.6 c -0.2,0.7 -0.6,1.3 -1,1.8 l 0.8,1.4 -0.3,0.2 c -0.3,0.2 -0.6,0.5 -0.9,0.6 -0.3,0.2 -0.6,0.3 -1,0.5 l -0.3,0.1 -0.8,-1.4 c -0.7,0.1 -1.4,0.1 -2.1,0 l -0.8,1.4 -0.3,-0.1 c -0.7,-0.3 -1.3,-0.6 -1.9,-1.1 l -0.3,-0.2 0.8,-1.4 c -0.2,-0.3 -0.4,-0.5 -0.6,-0.8 -0.2,-0.3 -0.3,-0.6 -0.4,-0.9 h -1.6 l -0.1,-0.4 c -0.1,-0.7 -0.1,-1.5 0,-2.2 l 0.1,-0.4 h 1.6 c 0.2,-0.7 0.6,-1.3 1,-1.8 l -0.8,-1.4 0.3,-0.2 c 0.3,-0.2 0.6,-0.5 0.9,-0.6 0.3,-0.2 0.6,-0.3 1,-0.5 l 0.3,-0.1 z M 88.4,217.9 h 29.9 v 3.2 H 88.4 Z m 0,7.2 h 12.1 v 3.2 H 88.4 Z m 0,7.3 h 9.7 v 3.2 h -9.7 l -0.1,-0.3 v -2.9 z m 25.7,-4.8 c 0.9,0.3 1.7,0.8 2.5,1.4 l 1.9,-1.1 0.3,0.4 c 0.7,0.8 1.2,1.7 1.5,2.6 l 0.2,0.5 -1.9,1.1 c 0.1,0.5 0.2,0.9 0.2,1.4 0,0.5 -0.1,1 -0.2,1.4 l 1.9,1.1 -0.2,0.5 c -0.3,0.9 -0.9,1.8 -1.5,2.6 l -0.3,0.4 -1.9,-1.1 c -0.7,0.6 -1.5,1.1 -2.5,1.4 v 2.2 l -0.5,0.1 c -0.5,0.1 -1,0.1 -1.5,0.1 -0.5,0 -1,0 -1.5,-0.1 l -0.5,-0.1 v -2.2 c -0.9,-0.3 -1.7,-0.8 -2.5,-1.4 l -1.9,1.1 -0.3,-0.4 c -0.6,-0.8 -1.2,-1.7 -1.5,-2.6 l -0.2,-0.5 1.9,-1.1 c -0.1,-0.5 -0.2,-0.9 -0.2,-1.4 0,-0.5 0.1,-0.9 0.2,-1.4 l -1.9,-1.1 0.2,-0.5 c 0.3,-0.9 0.9,-1.8 1.5,-2.6 l 0.3,-0.4 1.9,1.1 c 0.7,-0.6 1.5,-1.1 2.5,-1.4 v -2.2 l 0.5,-0.1 c 0.5,-0.1 1,-0.1 1.5,-0.1 0.5,0 1,0 1.5,0.1 l 0.5,0.1 z m -2,3 c -1.8,0 -3.3,1.5 -3.3,3.3 0,1.8 1.5,3.3 3.3,3.3 1.8,0 3.3,-1.5 3.3,-3.3 0,-1.8 -1.5,-3.3 -3.3,-3.3 z m -9.5,16.3 c -1.2,0.7 -1.6,2.2 -0.9,3.3 0.7,1.2 2.2,1.6 3.3,0.9 1.2,-0.7 1.6,-2.2 0.9,-3.3 -0.7,-1.2 -2.1,-1.6 -3.3,-0.9 z"/></symbol><symbol id="lg-genai" viewBox="0 0 128 128" preserveAspectRatio="xMidYMid meet"><image href="data:image/png;base64,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" width="128" height="128"/></symbol></defs></svg>
+<!--/FIG:logos-->
+
+
+<div class="titleblock">
+  <h1>System-1 at the Edge: One-Pass Security Decisions<br>of a 4B Model in the Browser<br>on Four Runtimes</h1>
+  <div class="authors">Eduardo Worrel</div>
+</div>
+
+<div class="abstract">
+<h2>Abstract</h2>
+<p>Security checks often look at material that should not leave the user's machine: the source of a page, internal code, logs. A model that runs inside the web browser keeps that material local, needs no server and costs nothing per question. CT0-Micro, the first model of the CT0 architecture [1] (about 4 billion parameters, released as alias3-micro-1026), is a natural candidate: in its System-1 mode it answers a typed security question (yes/no, multiple choice or severity) in a single pass, without writing text. We ask whether those quick answers survive the compression needed to fit in a browser. We publish CT0 builds for four runtimes and compare each with the original model on the same 172 questions. The answer is mostly yes. Only 4-bit builds fit in the browser. They score the same as the original, but each answers some questions differently, and our test is only large enough to catch big drops in accuracy. Speed depends on the runtime, from about half a second to about fifteen seconds per answer. Along the way we recover CT0's official decision head from a damaged release file, add a small severity reader as a proof of concept, and find that asking one question per vulnerability class improves detection on real code. Browser timings come from a single machine.</p>
+</div>
+
+<h2><span class="num">1</span>Introduction</h2>
+<p>CT0 [1] is an architecture for compact cybersecurity transformers. Its first model, CT0-Micro, is released as <code>alias3-micro-1026</code>; this paper studies that model, and below “CT0” refers to it. It has two modes that share the same weights. System&nbsp;2 is an agent that uses tools and writes text. System&nbsp;1 answers one typed security question in a single <i>forward pass</i>, one run of the model over the prompt. It can read the answer in two ways. The first uses the <i>logits</i>, the model's score for each possible next word. The second uses a <i>head</i>, a small extra layer that reads the model's internal state and picks an answer.</p>
+<p>One forward pass is cheap, so a System-1 answer could run inside a web page, on the user's own machine, without sending the material under test to a server. It also reads a single position, so it may tolerate low numeric precision that breaks long text generation. The CT0 paper tests System&nbsp;1 at full precision (bf16) on a server GPU. It leaves two questions for later work: the effect of <i>quantization</i> (storing the weights with fewer bits), and how the head compares with the logits. It does not cover running on the user's own device.</p>
+<p>In the browser, the main obstacle is CT0's vocabulary of 248,320 tokens. The <i>embedding</i>, the table that turns each token into numbers, takes 2.54&nbsp;GB in fp32 on its own. ONNX Runtime Web allows about 4&nbsp;GB per weight file [2]. Our contributions are:</p>
+<ol class="contrib">
+<li><b>Agreement with the original model.</b> We test four runtimes and up to seven precisions. None of 180 paired tests is significant, before or after Holm correction. We also count <i>flips</i>: questions where the compressed model gives a different answer than the original. The builds are published in five public Hugging Face repositories.</li>
+<li><b>Head versus logits, per mode.</b> We recover CT0's head from a damaged release file and add a separate severity reader as a proof of concept (Section&nbsp;4). We compare them with the logits on the decision test set. These are results for the recovered head on our prompt template, not for the official System&nbsp;1.</li>
+<li><b>Practical deployment findings.</b> One 8-bit scheme gives unstable answers. Half-precision arithmetic in MLC shifts the internal state. The browser's per-file limit forces large files to be split. On real code, asking one question per vulnerability class helps.</li>
+</ol>
+
+<h2><span class="num">2</span>Related Work</h2>
+<p>This section places our work next to four lines of research.</p>
+<p><b>Reading answers from inside the model.</b> CT0's System&nbsp;1 [1] trains a head on the internal state instead of generating the answer as text. Li et&nbsp;al. [3] do the same for text classification. Reading probabilities directly and asking the model in words can give different answers [4]. Small classifiers trained on internal states, called <i>probes</i>, can know more than the output shows, but they transfer poorly across datasets [5]. Yu et&nbsp;al. [6] use “System&nbsp;1” for answering without intermediate reasoning text, after distillation. Where the CT0 paper's System-1 results overlap with ours, they point the same way. System&nbsp;1 is weaker than System&nbsp;2 on severity, and typed questions beat one raw question. But those results come from other tasks, a server GPU and the complete head.</p>
+<p><b>Quantization and individual answers.</b> A compressed model can keep its accuracy and still change many individual answers [7]. That is why we report flips next to McNemar tests. Confidence drops mostly where the full model was already unsure [8]. The effect on internal states depends on the method and the bit width [9].</p>
+<p><b>Running models on the device.</b> Several runtimes run LLMs in the browser, mostly on WebGPU, the browser's interface to the GPU: ONNX Runtime Web [2] and GenAI [10], Transformers.js [11], WebLLM/MLC [12, 13] and LlamaWeb [14]. On WebGPU, launching GPU work dominates when tokens are generated one at a time [15]. Measurement studies cover browsers [16] and phones [17]; they report speed, memory and energy, not whether the device build gives the original model's answers. <b>Security models.</b> Foundation-Sec-8B is evaluated at full precision [18]. AQUA-LLM reports a quantization loss on cybersecurity questions answered by text generation [19].</p>
+
+<h2><span class="num">3</span>Method</h2>
+<p>This section describes the model, the runtimes, the test set, and how we read and compare answers.</p>
+<p><b>Model and runtimes.</b> We use <code>aliasrobotics/alias3-micro-1026</code> at revision <code>61c0e710</code> [20], the CT0-Micro release described by Mayoral-Vilches et&nbsp;al. [1]. It is a <code>qwen3_5_text</code> model [21]. A <i>build</i> is a converted copy of the model for one runtime at one precision. Our builds run on four runtimes: ONNX Runtime GenAI [10], WebLLM/MLC [13], transformers.js [11], and the decode-only graph (ONNX Runtime Web) [2]. The decode-only graph handles one token per call, so we feed it the prompt token by token. One library (ct0-edge) drives all four; they differ only in graph and runtime. Browser runs use Chrome with WebGPU on one Apple M2 Pro. Server runs use ONNX Runtime on NVIDIA GPUs.</p>
+<p><b>Test set and reference.</b> Our decision test set, which we wrote for this study and which is not part of the CT0 release, has 172 questions: 65 yes/no, 57 multiple choice and 50 severity (1–5). We compare every build with the original model, “Original (PyTorch bf16)”. It runs through Transformers with the same prompts, positions and reads as the builds (checked on 172 of 172 questions).</p>
+<p><b>Statistics.</b> For each mode and read we run an exact McNemar test. It asks whether the build and the original get different questions right more often than chance explains. There are 180 such tests on published builds. We correct them for multiple testing with Holm–Bonferroni. We also report the <i>flip rate</i>: the share of the 172 questions where the build's answer differs from the original's, per read. Accuracies carry 95% bootstrap confidence intervals.</p>
+<p><b>Two ways to read an answer.</b> The logits read compares the scores for <i>Yes</i> and <i>No</i>, for the first token of each option, or for the digits 1–5. The head read uses two small files that run as plain JavaScript on the model's internal state. <code>head.bin</code> is CT0's head, recovered from a damaged release file. <code>head_score.bin</code> is a new reader for severity. Section&nbsp;4 explains both.</p>
+<p><b>One summary number.</b> The <i>System-1 composite</i> is the average of three accuracies: yes/no and multiple choice with <code>head.bin</code>, and severity within ±1 level with <code>head_score.bin</code>.</p>
+<p><b>Our prompt template.</b> CT0 marks parts of the prompt with special markers. The mapping from these markers to token ids is not published. We therefore write the markers as plain text in our own template. All head results describe the recovered head on this template (Table&nbsp;A1).</p>
+
+<h2><span class="num">4</span>The heads: recovering CT0's head and adding a severity reader</h2>
+<p>This section explains how we rebuilt CT0's official head from a damaged file, what it can and cannot do, and how we added a separate file for severity.</p>
+<p><b>Why the official head does not open.</b> The official repository ships the head as <code>head.pt</code> (4,961,280 bytes). The file does not open: both <code>torch.load</code> and a standard zip reader fail. It has the same size in every commit of the repository, and no complete copy exists anywhere public. A <code>.pt</code> file is a zip archive. This one was written in streaming mode (flag 0x0808), which stores each block's size after the block instead of in an index. The upload stopped partway through the third tensor; a <i>tensor</i> is one array of numbers. Seven internal entries had started. The entry that describes the structure (<code>data.pkl</code>, 3,553 bytes) is complete.</p>
+<p><b>What the head is.</b> That description shows a very simple head. It scores an answer as the product of two projections of the internal state <i>h</i>: score&nbsp;=&nbsp;q(<i>h</i>)·k(<i>h</i>). It has only four tensors: <code>q.weight</code> (256×2560), <code>q.bias</code> (256), <code>k.weight</code> (256×2560) and <code>k.bias</code> (256). The saved settings are head_dim 256, temperature 2.0 and head_lr&nbsp;=&nbsp;0.0, the head's learning rate.</p>
+<p><b>How we recovered it.</b> We read the zip byte stream by hand and pulled out every tensor that was there (Table&nbsp;1). All 583,648 recovered numbers are finite. <code>k.weight</code> has the same spread as <code>q.weight</code> (standard deviation 0.011417 vs 0.011408). The byte order is little-endian, as expected. The 29 missing rows of <code>k.weight</code> cannot be rebuilt: they have no simple structure, and k cannot be predicted from q. We leave them at zero.</p>
+<div class="tbl sm" style="break-inside:avoid">
+<div class="cap"><b>Table 1:</b> How much of each part of CT0's head we recovered from the damaged <code>head.pt</code>. CRC is the zip file's own checksum. Takeaway: q is complete, most of <code>k.weight</code> survives, and <code>k.bias</code> is lost.</div>
+<table>
+<thead><tr><th>Tensor</th><th>Shape</th><th>Recovered</th></tr></thead>
+<tbody>
+<tr><td><code>q.weight</code></td><td>256×2560</td><td>100% (CRC matches)</td></tr>
+<tr><td><code>q.bias</code></td><td>256</td><td>100% (CRC matches)</td></tr>
+<tr><td><code>k.weight</code></td><td>256×2560</td><td>89.1% (227 of 256 rows complete, plus 2528 of 2560 values of row 228)</td></tr>
+<tr><td><code>k.bias</code></td><td>256</td><td>0% (lost)</td></tr>
+</tbody></table>
+</div>
+<p><b>Replacing the lost bias.</b> head_lr&nbsp;=&nbsp;0.0 means that q and k were not trained in that run. They act as a fixed projection. In that case the missing <code>k.bias</code> only shifts every score by the same constant. So one offset can replace it. We take the median score over 8 unlabeled base prompts, −16.27, and add +16.27 to every score. This step uses no labels.</p>
+<p><b>Where the head reads, and how we checked it.</b> The official paper does not say at which positions the head reads. We found them by trying more than 200 combinations. q reads at the <code>&lt;decide&gt;</code> marker. k reads at the last prompt position for yes/no, and at each <code>&lt;/opt&gt;</code> marker for multiple choice. Normalizing the internal state made results worse. The temperature only scales the scores. On yes/no the recovered head is right on 16 of 16 prompts (8 base and 8 held out), and its scores have a correlation of 0.984 with the logits decision. We release it as <code>head.bin</code> (2.6&nbsp;MB, fp16). It runs in plain JavaScript in 1.18&nbsp;ms per call, against 522&nbsp;ms for one forward pass of the model.</p>
+<p><b>Why it cannot rank severity.</b> The recovered head does not put severity levels in order. Across more than 34 settings (positions, offsets, normalization, temperature), the best result was 5 of 7. That result came from the threshold, not from telling levels apart. This is expected: an untrained projection has no reason to encode a 1-to-5 scale.</p>
+<p><b>A severity direction exists.</b> We first checked whether severity is visible inside CT0 at all. We took the difference between the average internal state of severe cases (level 3 or higher) and of mild ones (below 3). Scoring new cases along this direction ranks them by severity. On 30 new cases, split 15 for fitting and 15 for testing over 200 random splits, the Spearman rank correlation on the test half is 0.83–0.84. With shuffled labels it is about −0.02.</p>
+<p><b>How <code>head_score.bin</code> is built.</b> <code>head_score.bin</code> is a <i>ridge regression</i>, a straight-line fit with a penalty that keeps the weights small (λ&nbsp;=&nbsp;10, chosen by leave-one-out). It maps the internal state at the last prompt position to a severity level from 1 to 5. It is fitted on 30 labelled cases, 6 per level. We store it in exactly <code>head.bin</code>'s format: it uses 2 of the 256 rows, and the rest are zero. So the same JavaScript code runs both files. The stored version differs from the full-precision fit by 0.00086. A fixed scale α&nbsp;=&nbsp;1.1, set in advance from the level thresholds, turns the output into a level.</p>
+<p><b>How well it works.</b> On held-out cases (15 for fitting, 15 for testing, 300 splits) it reaches a Spearman correlation of 0.849. It gives the exact level 0.448 of the time and is within ±1 level 0.970 of the time. With shuffled labels it drops to chance: Spearman −0.037, exact 0.207. Always answering “3” gives 0.20 exact. On the 50 severity questions of the test set, never used for fitting, the original model with <code>head_score.bin</code> is exact 0.52 of the time and within ±1 0.94 of the time. The logits reach 0.40 and 0.70. The official paper advises against re-fitting the head on your own labels. We keep <code>head.bin</code> unchanged for yes/no and multiple choice. <code>head_score.bin</code> is a second, separate file used only for severity.</p>
+<p><b>Scope of <code>head_score.bin</code>.</b> <code>head_score.bin</code> is a proof of concept. It shows that CT0's internal state carries a severity direction, and that a reader for it fits inside the head's own file format. It was fitted on 30 synthetic cases and tested on 50 synthetic questions; using it as a severity scorer calls for a larger, independently labelled set.</p>
+
+<h2><span class="num">5</span>Results</h2>
+<h3><span class="num">5.1</span>Agreement with the original model</h3>
+<p>This section shows that no published build is detectably less accurate than the original, although 4-bit builds change many individual answers.</p>
+<p>None of the 180 paired tests has <i>p</i>&lt;0.05; the smallest is <i>p</i>&nbsp;=&nbsp;0.0625. So none remains after Holm–Bonferroni. Both ONNX fp32 builds match the original within one answer per read.</p>
+<p>Flip rates show differences that accuracy hides. The fp16 and fp32 builds change 0.6–2.3% of answers. The published 4-bit builds change 5.8–13.4% with the logits and 12.2–19.8% with the head. The <i>dynamic W8A8</i> builds, which also turn the intermediate values into 8-bit numbers while running, change up to 28.5%. Most head flips fall on the border between two severity levels (for example, 14 of 21 for decode-only q4f16).</p>
+<figure class="m">
+<!--FIG:line_size-->
+<svg viewBox="0 0 720 720" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="System-1 composite vs size, one line per runtime" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" style="display:block">
+<style>svg text{paint-order:stroke;stroke:#faf9f5;stroke-width:3px;stroke-linejoin:round}</style>
+<rect x="0.5" y="0.5" width="719" height="719" fill="#faf9f5" stroke="#dedbd2" rx="3"/>
+<text x="22.0" y="30.0" font-size="17" text-anchor="start" fill="#1b1d21" font-weight="bold" >System-1 composite vs size, one line per runtime</text>
+<text x="698.0" y="30.0" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >Composite vs size</text>
+<circle cx="367.0" cy="57.0" r="6" fill="#009E73" stroke="#1b1d21" stroke-width="0.8"/>
+<use href="#lg-genai" x="379.0" y="48.0" width="18" height="18"/>
+<text x="403.0" y="62.0" font-size="14" text-anchor="start" fill="#1b1d21" font-weight="bold" >ONNX Runtime GenAI</text>
+<circle cx="569.6" cy="57.0" r="6" fill="#CC79A7" stroke="#1b1d21" stroke-width="0.8"/>
+<use href="#lg-mlc" x="581.6" y="48.0" width="18" height="18"/>
+<text x="605.6" y="62.0" font-size="14" text-anchor="start" fill="#1b1d21" font-weight="bold" >WebLLM (MLC)</text>
+<circle cx="205.3" cy="81.0" r="6" fill="#E69F00" stroke="#1b1d21" stroke-width="0.8"/>
+<use href="#lg-tjs" x="217.3" y="72.0" width="18" height="18"/>
+<text x="241.3" y="86.0" font-size="14" text-anchor="start" fill="#1b1d21" font-weight="bold" >transformers.js</text>
+<circle cx="384.8" cy="81.0" r="6" fill="#0072B2" stroke="#1b1d21" stroke-width="0.8"/>
+<use href="#lg-edge" x="396.8" y="72.0" width="18" height="18"/>
+<text x="420.8" y="86.0" font-size="14" text-anchor="start" fill="#1b1d21" font-weight="bold" >decode-only graph (ONNX Runtime Web)</text>
+<text x="74.0" y="134.0" font-size="14" text-anchor="start" fill="#1b1d21" font-weight="bold" >Fits the browser (≤ 4 GB)</text>
+<text x="528.0" y="134.0" font-size="14" text-anchor="start" fill="#1b1d21" font-weight="bold" >Too large (&gt; 4 GB)</text>
+<line x1="74.0" y1="610.0" x2="502.0" y2="610.0" stroke="#e3e5e8" stroke-width="0.8" />
+<line x1="528.0" y1="610.0" x2="698.0" y2="610.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="66.0" y="615.0" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >79</text>
+<line x1="74.0" y1="564.0" x2="502.0" y2="564.0" stroke="#e3e5e8" stroke-width="0.8" />
+<line x1="528.0" y1="564.0" x2="698.0" y2="564.0" stroke="#e3e5e8" stroke-width="0.8" />
+<line x1="74.0" y1="518.0" x2="502.0" y2="518.0" stroke="#e3e5e8" stroke-width="0.8" />
+<line x1="528.0" y1="518.0" x2="698.0" y2="518.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="66.0" y="523.0" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >81</text>
+<line x1="74.0" y1="472.0" x2="502.0" y2="472.0" stroke="#e3e5e8" stroke-width="0.8" />
+<line x1="528.0" y1="472.0" x2="698.0" y2="472.0" stroke="#e3e5e8" stroke-width="0.8" />
+<line x1="74.0" y1="426.0" x2="502.0" y2="426.0" stroke="#e3e5e8" stroke-width="0.8" />
+<line x1="528.0" y1="426.0" x2="698.0" y2="426.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="66.0" y="431.0" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >83</text>
+<line x1="74.0" y1="380.0" x2="502.0" y2="380.0" stroke="#e3e5e8" stroke-width="0.8" />
+<line x1="528.0" y1="380.0" x2="698.0" y2="380.0" stroke="#e3e5e8" stroke-width="0.8" />
+<line x1="74.0" y1="334.0" x2="502.0" y2="334.0" stroke="#e3e5e8" stroke-width="0.8" />
+<line x1="528.0" y1="334.0" x2="698.0" y2="334.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="66.0" y="339.0" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >85</text>
+<line x1="74.0" y1="288.0" x2="502.0" y2="288.0" stroke="#e3e5e8" stroke-width="0.8" />
+<line x1="528.0" y1="288.0" x2="698.0" y2="288.0" stroke="#e3e5e8" stroke-width="0.8" />
+<line x1="74.0" y1="242.0" x2="502.0" y2="242.0" stroke="#e3e5e8" stroke-width="0.8" />
+<line x1="528.0" y1="242.0" x2="698.0" y2="242.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="66.0" y="247.0" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >87</text>
+<line x1="74.0" y1="196.0" x2="502.0" y2="196.0" stroke="#e3e5e8" stroke-width="0.8" />
+<line x1="528.0" y1="196.0" x2="698.0" y2="196.0" stroke="#e3e5e8" stroke-width="0.8" />
+<line x1="74.0" y1="150.0" x2="502.0" y2="150.0" stroke="#e3e5e8" stroke-width="0.8" />
+<line x1="528.0" y1="150.0" x2="698.0" y2="150.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="66.0" y="155.0" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >89</text>
+<line x1="74.0" y1="150.0" x2="74.0" y2="610.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="74.0" y="630.0" font-size="14" text-anchor="middle" fill="#5b616b" font-weight="normal" >2.2</text>
+<line x1="169.1" y1="150.0" x2="169.1" y2="610.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="169.1" y="630.0" font-size="14" text-anchor="middle" fill="#5b616b" font-weight="normal" >2.4</text>
+<line x1="264.2" y1="150.0" x2="264.2" y2="610.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="264.2" y="630.0" font-size="14" text-anchor="middle" fill="#5b616b" font-weight="normal" >2.6</text>
+<line x1="359.3" y1="150.0" x2="359.3" y2="610.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="359.3" y="630.0" font-size="14" text-anchor="middle" fill="#5b616b" font-weight="normal" >2.8</text>
+<line x1="454.4" y1="150.0" x2="454.4" y2="610.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="454.4" y="630.0" font-size="14" text-anchor="middle" fill="#5b616b" font-weight="normal" >3.0</text>
+<line x1="556.7" y1="150.0" x2="556.7" y2="610.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="556.7" y="630.0" font-size="14" text-anchor="middle" fill="#5b616b" font-weight="normal" >5</text>
+<line x1="621.1" y1="150.0" x2="621.1" y2="610.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="621.1" y="630.0" font-size="14" text-anchor="middle" fill="#5b616b" font-weight="normal" >10</text>
+<line x1="685.5" y1="150.0" x2="685.5" y2="610.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="685.5" y="630.0" font-size="14" text-anchor="middle" fill="#5b616b" font-weight="normal" >20</text>
+<line x1="74.0" y1="610.0" x2="502.0" y2="610.0" stroke="#8a9099" stroke-width="1" />
+<line x1="74.0" y1="150.0" x2="74.0" y2="610.0" stroke="#8a9099" stroke-width="1" />
+<line x1="528.0" y1="610.0" x2="698.0" y2="610.0" stroke="#8a9099" stroke-width="1" />
+<line x1="528.0" y1="150.0" x2="528.0" y2="610.0" stroke="#8a9099" stroke-width="1" />
+<text x="288.0" y="654.0" font-size="14" text-anchor="middle" fill="#1b1d21" font-weight="normal" >file size (GB = 10⁹ bytes, linear)</text>
+<text x="613.0" y="654.0" font-size="14" text-anchor="middle" fill="#1b1d21" font-weight="normal" >GB, log scale</text>
+<text x="20.0" y="380.0" font-size="14.5" text-anchor="middle" fill="#1b1d21" font-weight="normal" transform="rotate(-90 20 380.0)">System-1 composite (%)</text>
+<line x1="515.0" y1="116.0" x2="515.0" y2="616.0" stroke="#1b1d21" stroke-width="1.6" stroke-dasharray="6 4" />
+<text x="515.0" y="112.0" font-size="12.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >limit ≈ 4 GB</text>
+<line x1="74.0" y1="291.4" x2="502.0" y2="291.4" stroke="#6b6b6b" stroke-width="1.3" stroke-dasharray="2 3" />
+<line x1="528.0" y1="291.4" x2="698.0" y2="291.4" stroke="#6b6b6b" stroke-width="1.3" stroke-dasharray="2 3" />
+<text x="22.0" y="674.0" font-size="12.5" text-anchor="start" fill="#5b616b" font-weight="normal" >System-1 composite = mean of the yes/no (head.bin), multiple-choice (head.bin) and severity ±1</text>
+<text x="22.0" y="690.0" font-size="12.5" text-anchor="start" fill="#5b616b" font-weight="normal" >(head_score) accuracies on our decision test set.</text>
+<text x="22.0" y="706.0" font-size="12.5" text-anchor="start" fill="#5b616b" font-weight="normal" ></text>
+<line x1="22.0" y1="62.0" x2="50.0" y2="62.0" stroke="#6b6b6b" stroke-width="1.6" stroke-dasharray="2 3" />
+<text x="56.0" y="67.0" font-size="13" text-anchor="start" fill="#4a4a4a" font-weight="bold" >Original (PyTorch bf16) 85.9</text>
+<path d="M325.5,199.4 L327.8,271.6 L469.3,237.6" fill="none" stroke="#0072B2" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M327.7,260.7 L330.1,376.3 L471.6,237.6" fill="none" stroke="#E69F00" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M153.5,298.0 L153.5,226.3" fill="none" stroke="#CC79A7" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="325.5" cy="199.4" r="9.5" fill="#fff" stroke="#0072B2" stroke-width="2"/><use href="#lg-edge" x="318.0" y="191.9" width="15" height="15"/>
+<circle cx="153.5" cy="226.3" r="9.5" fill="#fff" stroke="#CC79A7" stroke-width="2"/><use href="#lg-mlc" x="146.0" y="218.8" width="15" height="15"/>
+<circle cx="188.5" cy="237.6" r="9.5" fill="#fff" stroke="#009E73" stroke-width="2"/><use href="#lg-genai" x="181.0" y="230.1" width="15" height="15"/>
+<rect x="449.3" y="227.1" width="40.0" height="21.0" rx="10.5" fill="#fff" stroke="#1b1d21" stroke-width="1.4"/>
+<use href="#lg-edge" x="452.3" y="230.1" width="15" height="15"/>
+<use href="#lg-tjs" x="470.3" y="230.1" width="15" height="15"/>
+<circle cx="327.7" cy="260.7" r="9.5" fill="#fff" stroke="#E69F00" stroke-width="2"/><use href="#lg-tjs" x="320.2" y="253.2" width="15" height="15"/>
+<circle cx="327.8" cy="271.6" r="9.5" fill="#fff" stroke="#0072B2" stroke-width="2"/><use href="#lg-edge" x="320.3" y="264.1" width="15" height="15"/>
+<circle cx="153.5" cy="298.0" r="9.5" fill="#fff" stroke="#CC79A7" stroke-width="2"/><use href="#lg-mlc" x="146.0" y="290.5" width="15" height="15"/>
+<circle cx="330.1" cy="376.3" r="9.5" fill="#fff" stroke="#E69F00" stroke-width="2"/><use href="#lg-tjs" x="322.6" y="368.8" width="15" height="15"/>
+<text x="340.5" y="203.3" font-size="12.5" text-anchor="start" fill="#00507f" font-weight="normal" >q4f16</text>
+<text x="90.3" y="230.2" font-size="12.5" text-anchor="start" fill="#9c3f7c" font-weight="normal" >q4f32_1</text>
+<text x="203.5" y="241.5" font-size="12.5" text-anchor="start" fill="#006b4f" font-weight="normal" >int4 (block 32)</text>
+<text x="462.5" y="220.0" font-size="12.5" text-anchor="start" fill="#1b1d21" font-weight="normal" >q4</text>
+<text x="342.7" y="264.7" font-size="12.5" text-anchor="start" fill="#8a5a00" font-weight="normal" >q4f16</text>
+<text x="257.8" y="275.5" font-size="12.5" text-anchor="start" fill="#00507f" font-weight="normal" >bnb4-nf4</text>
+<text x="129.4" y="280.4" font-size="12.5" text-anchor="start" fill="#9c3f7c" font-weight="normal" >q4f16_1</text>
+<text x="345.1" y="380.3" font-size="12.5" text-anchor="start" fill="#8a5a00" font-weight="normal" >bnb4</text>
+<path d="M554.0,362.2 L555.0,352.3 L605.1,264.5 L682.5,264.5" fill="none" stroke="#0072B2" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M540.9,480.6 L541.0,564.6 L605.1,291.4 L669.4,291.4" fill="none" stroke="#E69F00" stroke-width="2.2" stroke-linejoin="round"/>
+<circle cx="605.1" cy="264.5" r="9.5" fill="#fff" stroke="#0072B2" stroke-width="2"/><use href="#lg-edge" x="597.6" y="257.0" width="15" height="15"/>
+<circle cx="682.5" cy="264.5" r="9.5" fill="#fff" stroke="#0072B2" stroke-width="2"/><use href="#lg-edge" x="675.0" y="257.0" width="15" height="15"/>
+<rect x="585.1" y="280.9" width="40.0" height="21.0" rx="10.5" fill="#fff" stroke="#1b1d21" stroke-width="1.4"/>
+<use href="#lg-tjs" x="588.1" y="283.9" width="15" height="15"/>
+<use href="#lg-genai" x="606.1" y="283.9" width="15" height="15"/>
+<circle cx="669.4" cy="291.4" r="9.5" fill="#fff" stroke="#E69F00" stroke-width="2"/><use href="#lg-tjs" x="661.9" y="283.9" width="15" height="15"/>
+<circle cx="555.0" cy="352.3" r="9.5" fill="#fff" stroke="#0072B2" stroke-width="2"/><use href="#lg-edge" x="547.5" y="344.8" width="15" height="15"/>
+<circle cx="554.0" cy="362.2" r="9.5" fill="#fff" stroke="#0072B2" stroke-width="2"/><use href="#lg-edge" x="546.5" y="354.7" width="15" height="15"/>
+<circle cx="540.9" cy="480.6" r="9.5" fill="#fff" stroke="#E69F00" stroke-width="2"/><use href="#lg-tjs" x="533.4" y="473.1" width="15" height="15"/>
+<circle cx="541.0" cy="564.6" r="9.5" fill="#fff" stroke="#E69F00" stroke-width="2"/><use href="#lg-tjs" x="533.5" y="557.1" width="15" height="15"/>
+<text x="620.1" y="268.3" font-size="12" text-anchor="start" fill="#00507f" font-weight="normal" >fp16</text>
+<line x1="682.5" y1="264.5" x2="667.1" y2="249.1" stroke="#a7a49b" stroke-width="0.9" />
+<text x="640.7" y="246.6" font-size="12" text-anchor="start" fill="#00507f" font-weight="normal" >fp32</text>
+<text x="591.9" y="316.5" font-size="12" text-anchor="start" fill="#1b1d21" font-weight="normal" >fp16</text>
+<text x="656.2" y="316.5" font-size="12" text-anchor="start" fill="#8a5a00" font-weight="normal" >fp32</text>
+<text x="570.0" y="356.1" font-size="12" text-anchor="start" fill="#00507f" font-weight="normal" >q8</text>
+<text x="537.5" y="387.2" font-size="12" text-anchor="start" fill="#00507f" font-weight="normal" >uint8</text>
+<text x="555.9" y="484.4" font-size="12" text-anchor="start" fill="#8a5a00" font-weight="normal" >q8</text>
+<text x="556.0" y="568.4" font-size="12" text-anchor="start" fill="#8a5a00" font-weight="normal" >uint8</text>
+</svg>
+<!--/FIG:line_size-->
+<figcaption><b>Figure 1:</b> System-1 composite against weight-file size. The composite is the average of yes/no and multiple-choice accuracy with <code>head.bin</code> and severity within ±1 with <code>head_score.bin</code>. Left panel: builds that fit the browser (≤&nbsp;4&nbsp;GB); right panel: builds that do not. Dotted line: the original model (PyTorch bf16). Takeaway: fewer bits do not lower the score; the lowest points are the dynamic W8A8 builds.</figcaption>
+</figure>
+<div class="tbl t5 sm" style="break-inside:avoid">
+<div class="cap"><b>Table 2:</b> Builds that fit the browser, compared with the original model. Comp. = System-1 composite. Flips = % of the 172 questions where the build's answer differs from the original's (logits read / head read). Last column: smallest McNemar <i>p</i>, before correction. Per-mode counts: Table&nbsp;A2. Takeaway: 4-bit builds change many individual answers, but no accuracy difference is detectable with this many questions.</div>
+<div class="sort">First row: the original, as reference. Other rows by composite, highest first; the differences between them are not statistically significant.</div>
+<div class="rule"><span><span class="sw" style="background:var(--ok)"></span>no significant change vs original</span><span><span class="sw" style="background:var(--pre)"></span>consistent but not significant loss, or unstable</span><span><span class="sw" style="background:#fff"></span>original model (reference)</span><span><span class="sw" style="background:var(--nf)"></span>GB cell: does not fit the browser</span></div>
+<table>
+<thead><tr><thead><tr><th class="k">#</th><th>Runtime · build</th><th class="n">GB</th><th class="n">Comp.</th><th class="n">Flips l / h (%)</th><th>McNemar vs original</th></tr></thead>
+<tbody>
+<tr class="w"><td class="k">–</td><td><b>Original (PyTorch bf16)</b></td><td class="n">—</td><td class="n">0.859</td><td class="n">—</td><td>reference</td></tr>
+<tr class="g"><td class="k">1</td><td><span class="rt"><svg class="lg"><use href="#lg-edge" width="100%" height="100%"/></svg>decode-only q4f16</span></td><td class="n">2.73</td><td class="n">0.879</td><td class="n">12.8 / 12.2</td><td><i>p</i>=0.25 (−3, severity)</td></tr>
+<tr class="g"><td class="k">2</td><td><span class="rt"><svg class="lg"><use href="#lg-mlc" width="100%" height="100%"/></svg>WebLLM q4f32_1</span></td><td class="n">2.37</td><td class="n">0.873</td><td class="n">13.4 / 14.0</td><td><i>p</i>=0.25 (+3, severity)</td></tr>
+<tr class="g"><td class="k">3</td><td><span class="rt"><svg class="lg"><use href="#lg-genai" width="100%" height="100%"/></svg>GenAI int4 (block 32)</span></td><td class="n">2.44</td><td class="n">0.871</td><td class="n">11.6 / 14.5</td><td><i>p</i>=0.73 (+2, mult. choice)</td></tr>
+<tr class="g"><td class="k">4</td><td><span class="rt"><svg class="lg"><use href="#lg-edge" width="100%" height="100%"/></svg>decode-only q4</span></td><td class="n">3.03</td><td class="n">0.871</td><td class="n">10.5 / 14.5</td><td><i>p</i>=0.50 (−2, severity)</td></tr>
+<tr class="g"><td class="k">5</td><td><span class="rt"><svg class="lg"><use href="#lg-tjs" width="100%" height="100%"/></svg>transformers.js q4</span></td><td class="n">3.04</td><td class="n">0.871</td><td class="n">10.5 / 14.5</td><td><i>p</i>=0.73 (+2, mult. choice)</td></tr>
+<tr class="g"><td class="k">6</td><td><span class="rt"><svg class="lg"><use href="#lg-tjs" width="100%" height="100%"/></svg>transformers.js q4f16</span></td><td class="n">2.73</td><td class="n">0.866</td><td class="n">9.9 / 14.5</td><td><i>p</i>=1</td></tr>
+<tr class="g"><td class="k">7</td><td><span class="rt"><svg class="lg"><use href="#lg-edge" width="100%" height="100%"/></svg>decode-only bnb4-nf4</span></td><td class="n">2.73</td><td class="n">0.864</td><td class="n">6.4 / 12.2</td><td><i>p</i>=0.13 (+5, mult. choice)</td></tr>
+<tr class="g"><td class="k">8</td><td><span class="rt"><svg class="lg"><use href="#lg-mlc" width="100%" height="100%"/></svg>WebLLM q4f16_1</span></td><td class="n">2.37</td><td class="n">0.858</td><td class="n">10.5 / 19.8</td><td><i>p</i>=0.25 (−3, severity)</td></tr>
+<tr class="g"><td class="k">9</td><td><span class="rt"><svg class="lg"><use href="#lg-tjs" width="100%" height="100%"/></svg>transformers.js bnb4</span></td><td class="n">2.74</td><td class="n">0.841</td><td class="n">5.8 / 12.8</td><td><i>p</i>=0.062 (+5, mult. choice)</td></tr>
+</tbody></table>
+</div>
+<h3><span class="num">5.2</span>Head versus logits</h3>
+<p>This section compares the two ways of reading an answer.</p>
+<p>On yes/no the recovered head ties the logits: across published builds, the logits get 51–55 questions right and the head 51–56. On multiple choice the head is ahead on the original model: 0.81 [0.70, 0.91] against 0.68 [0.56, 0.81]. On severity <code>head_score.bin</code> is ahead too: 0.52 exact and 0.94 within ±1, against 0.40 and 0.70 for the logits. The confidence intervals overlap, and we ran no paired test.</p>
+<figure class="s">
+<!--FIG:headlog-->
+<svg viewBox="0 0 720 470" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Recovered head vs logits, per mode" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" style="display:block">
+<style>svg text{paint-order:stroke;stroke:#faf9f5;stroke-width:3px;stroke-linejoin:round}</style>
+<rect x="0.5" y="0.5" width="719" height="469" fill="#faf9f5" stroke="#dedbd2" rx="3"/>
+<text x="22.0" y="30.0" font-size="17" text-anchor="start" fill="#1b1d21" font-weight="bold" >Recovered head vs logits, per mode</text>
+<text x="698.0" y="30.0" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >Original model (PyTorch bf16)</text>
+<rect x="22.0" y="50.0" width="16.0" height="16.0" fill="#0072B2" rx="3"/>
+<text x="46.0" y="63.0" font-size="13.5" text-anchor="start" fill="#1b1d21" font-weight="normal" >logits readout</text>
+<rect x="172.0" y="50.0" width="16.0" height="16.0" fill="#9ccbea" rx="3"/>
+<text x="196.0" y="63.0" font-size="13.5" text-anchor="start" fill="#1b1d21" font-weight="normal" >gain from the head (where the head scores higher)</text>
+<line x1="86.0" y1="389.6" x2="698.0" y2="389.6" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="394.6" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >0</text>
+<line x1="86.0" y1="337.3" x2="698.0" y2="337.3" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="342.3" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >20</text>
+<line x1="86.0" y1="285.0" x2="698.0" y2="285.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="290.0" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >40</text>
+<line x1="86.0" y1="232.6" x2="698.0" y2="232.6" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="237.6" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >60</text>
+<line x1="86.0" y1="180.3" x2="698.0" y2="180.3" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="185.3" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >80</text>
+<line x1="86.0" y1="128.0" x2="698.0" y2="128.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="133.0" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >100</text>
+<line x1="86.0" y1="389.6" x2="698.0" y2="389.6" stroke="#1b1d21" stroke-width="1.2" />
+<line x1="86.0" y1="122.0" x2="86.0" y2="389.6" stroke="#8a9099" stroke-width="1" />
+<text x="24.0" y="258.8" font-size="14.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" transform="rotate(-90 24 258.8)">ACCURACY (%)</text>
+<rect x="114.5" y="206.5" width="96.0" height="183.1" fill="#0072B2" />
+<rect x="114.5" y="143.7" width="96.0" height="62.8" fill="#9ccbea" />
+<text x="162.5" y="123.7" font-size="15.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >94%</text>
+<text x="162.5" y="137.7" font-size="11" text-anchor="middle" fill="#5b616b" font-weight="normal" font-style="italic">with the head (47/50)</text>
+<text x="162.5" y="224.5" font-size="14" text-anchor="middle" fill="#fff" font-weight="bold" style="stroke:none">70%</text>
+<text x="162.5" y="238.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="normal" style="stroke:none;font-style:italic">logits 35/50</text>
+<use href="#lg-edge" x="152.5" y="395.6" width="20" height="20"/>
+<text x="162.5" y="433.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >severity ±1</text>
+<text x="162.5" y="449.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="normal" >head_score</text>
+<rect x="267.5" y="172.3" width="96.0" height="217.3" fill="#0072B2" />
+<text x="315.5" y="152.3" font-size="15.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >83%</text>
+<text x="315.5" y="166.3" font-size="11" text-anchor="middle" fill="#5b616b" font-weight="normal" font-style="italic">head = logits (54/65)</text>
+<text x="315.5" y="190.3" font-size="14" text-anchor="middle" fill="#fff" font-weight="bold" style="stroke:none">83%</text>
+<text x="315.5" y="204.3" font-size="11" text-anchor="middle" fill="#fff" font-weight="normal" style="stroke:none;font-style:italic">logits 54/65</text>
+<use href="#lg-edge" x="305.5" y="395.6" width="20" height="20"/>
+<text x="315.5" y="433.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >yes/no</text>
+<text x="315.5" y="449.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="normal" >head.bin</text>
+<rect x="420.5" y="210.6" width="96.0" height="179.0" fill="#0072B2" />
+<rect x="420.5" y="178.5" width="96.0" height="32.1" fill="#9ccbea" />
+<text x="468.5" y="158.5" font-size="15.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >81%</text>
+<text x="468.5" y="172.5" font-size="11" text-anchor="middle" fill="#5b616b" font-weight="normal" font-style="italic">with the head (46/57)</text>
+<text x="468.5" y="228.6" font-size="14" text-anchor="middle" fill="#fff" font-weight="bold" style="stroke:none">68%</text>
+<text x="468.5" y="242.6" font-size="11" text-anchor="middle" fill="#fff" font-weight="normal" style="stroke:none;font-style:italic">logits 39/57</text>
+<use href="#lg-edge" x="458.5" y="395.6" width="20" height="20"/>
+<text x="468.5" y="433.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >multiple choice</text>
+<text x="468.5" y="449.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="normal" >head.bin</text>
+<rect x="573.5" y="285.0" width="96.0" height="104.6" fill="#0072B2" />
+<rect x="573.5" y="253.6" width="96.0" height="31.4" fill="#9ccbea" />
+<text x="621.5" y="233.6" font-size="15.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >52%</text>
+<text x="621.5" y="247.6" font-size="11" text-anchor="middle" fill="#5b616b" font-weight="normal" font-style="italic">with the head (26/50)</text>
+<text x="621.5" y="303.0" font-size="14" text-anchor="middle" fill="#fff" font-weight="bold" style="stroke:none">40%</text>
+<text x="621.5" y="317.0" font-size="11" text-anchor="middle" fill="#fff" font-weight="normal" style="stroke:none;font-style:italic">logits 20/50</text>
+<use href="#lg-edge" x="611.5" y="395.6" width="20" height="20"/>
+<text x="621.5" y="433.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >severity exact</text>
+<text x="621.5" y="449.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="normal" >head_score</text>
+</svg>
+<!--/FIG:headlog-->
+<figcaption><b>Figure 2:</b> Accuracy per mode on the original model with our prompt template: logits (dark) and recovered head (light, shown where higher). Sorted by head accuracy. Takeaway: a tie on yes/no; the head is ahead on multiple choice and severity, without a paired test.</figcaption>
+</figure>
+<h3><span class="num">5.3</span>Browser feasibility and deployment findings</h3>
+<p>This section shows which builds fit the browser, how fast they answer, and four practical findings.</p>
+<p>Every build that fits is 4-bit with a quantized embedding, at 2.37–3.04&nbsp;GB. Among them, one answer takes from 0.43–0.55&nbsp;s to about 15&nbsp;s, depending on the runtime (Figure&nbsp;3). Some builds ran in Chrome and on a server with the same files. Their answers almost always match. Decode-only q4 and q4f16 differ on 0 rows, and transformers.js bnb4 gives the same answer on all 172 questions. GenAI int4 gives the same answers on 159 of 172 questions (380 of 394 individual decisions); the 14 differences are close calls, which fits the half-precision arithmetic it uses on WebGPU.</p>
+<figure class="s">
+<!--FIG:time-->
+<svg viewBox="0 0 720 450" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Time per decision in Chrome" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" style="display:block">
+<style>svg text{paint-order:stroke;stroke:#faf9f5;stroke-width:3px;stroke-linejoin:round}</style>
+<rect x="0.5" y="0.5" width="719" height="449" fill="#faf9f5" stroke="#dedbd2" rx="3"/>
+<text x="22.0" y="30.0" font-size="17" text-anchor="start" fill="#1b1d21" font-weight="bold" >Time per decision in Chrome</text>
+<text x="698.0" y="30.0" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >Seconds per decision, WebGPU, Apple M2 Pro</text>
+<line x1="86.0" y1="369.6" x2="698.0" y2="369.6" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="374.6" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >0</text>
+<line x1="86.0" y1="325.7" x2="698.0" y2="325.7" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="330.7" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >3</text>
+<line x1="86.0" y1="281.7" x2="698.0" y2="281.7" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="286.7" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >6</text>
+<line x1="86.0" y1="237.8" x2="698.0" y2="237.8" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="242.8" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >9</text>
+<line x1="86.0" y1="193.9" x2="698.0" y2="193.9" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="198.9" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >12</text>
+<line x1="86.0" y1="149.9" x2="698.0" y2="149.9" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="154.9" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >15</text>
+<line x1="86.0" y1="106.0" x2="698.0" y2="106.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="111.0" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >18</text>
+<line x1="86.0" y1="369.6" x2="698.0" y2="369.6" stroke="#1b1d21" stroke-width="1.2" />
+<line x1="86.0" y1="100.0" x2="86.0" y2="369.6" stroke="#8a9099" stroke-width="1" />
+<text x="24.0" y="237.8" font-size="14.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" transform="rotate(-90 24 237.8)">SECONDS</text>
+<rect x="101.3" y="363.3" width="71.4" height="6.3" fill="#009E73" />
+<rect x="101.3" y="361.5" width="71.4" height="1.8" fill="#009E7366" />
+<text x="137.0" y="341.5" font-size="15.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >0.43–0.55 s¹</text>
+<text x="137.0" y="355.5" font-size="11" text-anchor="middle" fill="#5b616b" font-weight="normal" font-style="italic">measured range</text>
+<use href="#lg-genai" x="127.0" y="375.6" width="20" height="20"/>
+<text x="137.0" y="413.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >GenAI</text>
+<text x="137.0" y="429.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="normal" >int4 (block 32)</text>
+<rect x="203.3" y="357.5" width="71.4" height="12.1" fill="#CC79A7" />
+<text x="239.0" y="349.5" font-size="15.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >0.82 s²</text>
+<use href="#lg-mlc" x="229.0" y="375.6" width="20" height="20"/>
+<text x="239.0" y="413.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >WebLLM</text>
+<text x="239.0" y="429.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="normal" >q4f16_1</text>
+<rect x="305.3" y="352.2" width="71.4" height="17.4" fill="#CC79A7" />
+<text x="341.0" y="344.2" font-size="15.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >1.19 s²</text>
+<use href="#lg-mlc" x="331.0" y="375.6" width="20" height="20"/>
+<text x="341.0" y="413.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >WebLLM</text>
+<text x="341.0" y="429.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="normal" >q4f32_1</text>
+<rect x="407.3" y="284.7" width="71.4" height="84.9" fill="#E69F00" />
+<text x="443.0" y="276.7" font-size="15.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >5.8 s³</text>
+<use href="#lg-tjs" x="433.0" y="375.6" width="20" height="20"/>
+<text x="443.0" y="413.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >transformers.js</text>
+<text x="443.0" y="429.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="normal" >q4f16</text>
+<rect x="509.3" y="261.2" width="71.4" height="108.4" fill="#E69F00" />
+<text x="545.0" y="253.2" font-size="15.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >7.4 s³</text>
+<use href="#lg-tjs" x="535.0" y="375.6" width="20" height="20"/>
+<text x="545.0" y="413.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >transformers.js</text>
+<text x="545.0" y="429.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="normal" >q4</text>
+<rect x="611.3" y="144.0" width="71.4" height="225.6" fill="#0072B2" />
+<text x="647.0" y="136.0" font-size="15.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >15.4 s⁴</text>
+<use href="#lg-edge" x="637.0" y="375.6" width="20" height="20"/>
+<text x="647.0" y="413.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >decode-only</text>
+<text x="647.0" y="429.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="normal" >q4f16</text>
+</svg>
+<!--/FIG:time-->
+<figcaption><b>Figure 3:</b> Time per System-1 answer in Chrome (WebGPU, one Apple M2 Pro), fastest first. Light segment: upper end of a measured range. ¹&nbsp;other session; ²&nbsp;median time to read the prompt, shared machine; ³&nbsp;median per question, runs slowed by other jobs dropped (q4f16: the 70 questions run without them); ⁴&nbsp;median per question over all 172 questions, GPU sharing during the run not recorded. Takeaway: runtimes differ in speed by more than ten times, with no detectable accuracy difference among these builds.</figcaption>
+</figure>
+<ul class="cav">
+<li><b>Dynamic W8A8 is unstable.</b> The transformers.js q8 and uint8 builds give different results on different execution providers and machines. On one item, P(Yes) was 0.4553, 0.5525 and 0.4652. The decode-only q8 build, which quantizes only the weights, does not have this problem.</li>
+<li><b>Half-precision arithmetic shifts MLC's internal state.</b> WebLLM q4f16_1 computes intermediate values in fp16. Its internal state at the last position has a cosine similarity of 0.86 with the original's, against 0.98 for q4f32_1. We found no detectable accuracy loss.</li>
+<li><b>The per-file limit forces splitting.</b> transformers.js q4 and q4f16 fail as one weight file. They load when split into files below 2&nbsp;GB. GenAI needs its WebGPU bundle; without it, 591 graph nodes silently fall back to the CPU.</li>
+<li><b>Generated text drifts, answers do not.</b> Every 4-bit build produces different tokens from fp32 within two steps of free generation. Yet each keeps its System-1 answers.</li>
+</ul>
+<h3><span class="num">5.4</span>Question format on real code</h3>
+<p>This section shows that the way the question is asked matters on real code.</p>
+<p>We use a real-code set of 161 JavaScript items. Their labels come mechanically from CodeQL's security tests [22] and OWASP Juice Shop [23]. We measure <i>AUROC</i>, how well a score separates vulnerable from safe code (0.5 is chance, 1 is perfect). One option is to ask a single generic question: “is this code vulnerable?”. The other is to ask once per vulnerability class and keep the highest score. Asking per class raises the logits AUROC from 0.807 to 0.847, and <code>head.bin</code>'s from 0.764 to 0.831, with no training (Table&nbsp;A3).</p>
+
+<h2><span class="num">6</span>Limitations</h2>
+<p>This section lists what our data cannot show.</p>
+<ul class="cav">
+<li><b>Small sample.</b> There are 65, 57 and 50 questions per mode, and 161 real-code items. An exact McNemar test needs at least 6 questions where the two models disagree. So only accuracy changes of 9–12% or more are detectable.</li>
+<li><b>Synthetic data, one annotator.</b> The questions are synthetic. Severity labels come from one author (Claude).</li>
+<li><b>Severity reader.</b> <code>head_score.bin</code> is a proof of concept, fitted and tested on synthetic cases; its severity results, including the severity part of the System-1 composite, are indicative.</li>
+<li><b>One machine.</b> Browser times come from a single Apple M2 Pro and were not repeated under controlled conditions. Each runtime was timed with its own script, so comparisons between runtimes mix the effect of the runtime and of the graph.</li>
+<li><b>Adapted interface.</b> We use plain-text markers, our own reads and a partly recovered head. Head results are not results for the official System&nbsp;1.</li>
+</ul>
+
+<h2><span class="num">7</span>Conclusion</h2>
+<p>This section states what the results mean.</p>
+<p>As far as this test set can tell, CT0's System-1 answers survive the move to the browser. Accuracy holds, but 4-bit builds change a real share of individual answers, and only large losses are detectable at this sample size. The vocabulary decides which builds fit the browser; the runtime decides how fast they answer. Most of CT0's head can be recovered from the damaged release file, and a second small file in the same format can read severity. On real code, asking one question per vulnerability class helps CT0 without training. Fixes to the tools, per-build generation tables and the relation to the official CT0 results are in the model cards. Per-question results and scripts are kept by the authors and available on request.</p>
+
+
+<p><i>Version 2 (November 2026). Figure 3 now shows the measured time for decode-only q4f16 (15.4&nbsp;s per question); version 1 printed 9–14&nbsp;s, a value its measurement files do not support. No other number changed.</i></p>
+
+<div class="refs">
+<h2>References</h2>
+<ol class="ay">
+<li><span class="rn">[1]</span> Mayoral-Vilches, V. and Alias Robotics (2026). <i>CT0: Cybersecurity Transformer</i>. arXiv:2610.16550.</li>
+<li><span class="rn">[2]</span> Microsoft (n.d.-a). <i>ONNX Runtime</i> (incl. onnxruntime-web). <code>github.com/microsoft/onnxruntime</code></li>
+<li><span class="rn">[3]</span> Li, Z., Li, X., Liu, Y., Xie, H., Li, J., Wang, F., Li, Q., and Zhong, X. (2023). Label Supervised LLaMA Finetuning. arXiv:2310.01208.</li>
+<li><span class="rn">[4]</span> Hu, J. and Levy, R. (2023). Prompting is not a substitute for probability measurements in large language models. <i>EMNLP 2023</i>. arXiv:2305.13264.</li>
+<li><span class="rn">[5]</span> Orgad, H., Toker, M., Gekhman, Z., Reichart, R., Szpektor, I., Kotek, H., and Belinkov, Y. (2024). LLMs Know More Than They Show: On the Intrinsic Representation of LLM Hallucinations. arXiv:2410.02707.</li>
+<li><span class="rn">[6]</span> Yu, P., Xu, J., Weston, J., and Kulikov, I. (2024). Distilling System 2 into System 1. arXiv:2407.06023.</li>
+<li><span class="rn">[7]</span> Dutta, A., Krishnan, S., Kwatra, N., and Ramjee, R. (2024). Accuracy is Not All You Need. <i>NeurIPS 2024</i>. arXiv:2407.09141.</li>
+<li><span class="rn">[8]</span> Proskurina, I., Brun, L., Metzler, G., and Velcin, J. (2024). When Quantization Affects Confidence of Large Language Models? <i>Findings of NAACL 2024</i>. arXiv:2405.00632.</li>
+<li><span class="rn">[9]</span> Wang, Q., Wang, M., Feldhus, N., Ostermann, S., Cao, Y., Schütze, H., Möller, S., and Schmitt, V. (2026). Through a Compressed Lens: Investigating The Impact of Quantization on Factual Knowledge Recall. <i>TrustNLP @ ACL 2026</i>. arXiv:2505.13963.</li>
+<li><span class="rn">[10]</span> Microsoft (n.d.-b). <i>onnxruntime-genai</i>. <code>github.com/microsoft/onnxruntime-genai</code></li>
+<li><span class="rn">[11]</span> Hugging Face (n.d.). <i>Transformers.js</i>. <code>github.com/huggingface/transformers.js</code></li>
+<li><span class="rn">[12]</span> Ruan, C. F., Qin, Y., Parthasarathy, A. R., et al. (2024). WebLLM: A High-Performance In-Browser LLM Inference Engine. arXiv:2412.15803.</li>
+<li><span class="rn">[13]</span> MLC AI (n.d.). <i>WebLLM</i> / <i>MLC-LLM</i>. <code>github.com/mlc-ai/web-llm</code></li>
+<li><span class="rn">[14]</span> Levine, R., Sharma, R., Jain, N., Ramesh, A., Chen, Z., Abbas, N., Contini, J., and Sorensen, T. (2026). Llamas on the Web: Memory-Efficient, Performance-Portable, and Multi-Precision LLM Inference with WebGPU. arXiv:2605.20706.</li>
+<li><span class="rn">[15]</span> Maczan, J. (2026). Characterizing WebGPU Dispatch Overhead for LLM Inference Across Four GPU Vendors, Three Backends, and Three Browsers. arXiv:2604.02344.</li>
+<li><span class="rn">[16]</span> Wang, Q., Jiang, S., Chen, Z., Cao, X., Li, Y., Li, A., Ma, Y., Cao, T., and Liu, X. (2024). Anatomizing Deep Learning Inference in Web Browsers. <i>ACM TOSEM</i>. arXiv:2402.05981.</li>
+<li><span class="rn">[17]</span> Laskaridis, S., Katevas, K., Minto, L., and Haddadi, H. (2024). MELTing point: Mobile Evaluation of Language Transformers. <i>MobiCom 2024</i>. arXiv:2403.12844.</li>
+<li><span class="rn">[18]</span> Kassianik, P., Saglam, B., Chen, A., et al. (2025). Llama-3.1-FoundationAI-SecurityLLM-Base-8B Technical Report. arXiv:2504.21039.</li>
+<li><span class="rn">[19]</span> Gungor, O., Sood, R., Wang, H., and Rosing, T. (2025). AQUA-LLM: Evaluating Accuracy, Quantization, and Adversarial Robustness Trade-offs in LLMs for Cybersecurity Question Answering. <i>ICMLA 2025</i>. arXiv:2509.13514.</li>
+<li><span class="rn">[20]</span> Alias Robotics (n.d.). <i>alias3-micro-1026</i> (CT0). Model card. <code>huggingface.co/aliasrobotics/alias3-micro-1026</code></li>
+<li><span class="rn">[21]</span> Qwen Team (n.d.). <i>Qwen3.5</i> model family. <code>huggingface.co/Qwen/Qwen3.5-4B</code></li>
+<li><span class="rn">[22]</span> GitHub (n.d.). <i>CodeQL</i>. <code>github.com/github/codeql</code></li>
+<li><span class="rn">[23]</span> OWASP (n.d.). <i>OWASP Juice Shop</i>. <code>github.com/juice-shop/juice-shop</code></li>
+</ol>
+<p class="cav">Runtime logos in figures and tables only identify the runtime (nominative use). They belong to their owners and imply no endorsement.</p>
+</div>
+
+<h2 class="app">Appendix</h2>
+<div class="appx">
+<p>The tables below support the main claims. Flip rates and the Holm correction come from the per-question results of each build against the original, with no new measurement; all other numbers are in the model cards or in the authors' per-question results, available on request.</p>
+<h3>A&nbsp;&nbsp;Protocol and reads</h3>
+<div class="tbl sm">
+<div class="cap"><b>Table A1:</b> Evaluation protocol and reads. Takeaway: every build is compared with the same original model, on the same prompts and reads.</div>
+<table><tbody>
+<tr><td style="width:36mm"><b>Decision test set (ours)</b></td><td>172 security questions with known answers, written by us for this study (not part of the CT0 release): <b>65</b> yes/no, <b>57</b> multiple-choice (chance 0.272), <b>50</b> severity (1–5; 10 per level, rubric labels, excluded from <code>head_score.bin</code> training). Called the “decision test set” below.</td></tr>
+<tr><td><b>Statistics</b></td><td><i>k</i>/<i>n</i>, 95% bootstrap CI (2000 resamples, seed 20261025); tie-aware Spearman; exact McNemar against the original model (PyTorch bf16), the reference for every System-1 comparison; Holm–Bonferroni over the 180 tests on shipped builds; flip rate = share of the 172 questions whose decision differs from the original, per read</td></tr>
+<tr><td><b>Original model</b></td><td>“Original (PyTorch bf16)”: <code>aliasrobotics/alias3-micro-1026</code> at revision <code>61c0e710</code>, the revision our builds come from, run in PyTorch bf16 through Transformers with one full forward pass per question. It reuses the same prompts, positions and reads as every other row (verified 172/172).</td></tr>
+<tr><td><b>Scope</b></td><td>18 shipped builds · 180 paired tests against the original</td></tr>
+<tr><td><b><code>head.bin</code></b></td><td>2.6&nbsp;MB fp16; <b>1.18&nbsp;ms</b> per call vs 522&nbsp;ms per forward; does not order severity (5/7 from the threshold; 34+ configurations ≤ 5/7)</td></tr>
+<tr><td><b><code>head_score.bin</code></b></td><td>ridge probe (λ=10, α=1.1 a priori); 30-item hold-out: Spearman <b>0.849</b>, exact 0.448, ±1 0.970; shuffled labels −0.037; proof of concept</td></tr>
+<tr><td><b>Reads</b></td><td>yes/no: <i>Yes</i> vs <i>No</i> logit at the last position; head: pointer score, q at <code>&lt;decide&gt;</code>, k at the last position with a fitted offset. Multiple choice: first token of each <code>&lt;opt&gt;</code>; head: q at <code>&lt;decide&gt;</code>, k at each <code>&lt;/opt&gt;</code>. Severity: argmax over the digits 1–5; head: <code>head_score.bin</code> raw value → level.</td></tr>
+<tr><td><b>Adapted interface</b></td><td>markers written as plain text in our own ChatML template (the marker-to-id mapping and the Choice criteria format are not published); <code>head.bin</code> recovered from a truncated release file (100% of <code>q</code>, 89.1% of <code>k.weight</code>, <code>k.bias</code> missing)</td></tr>
+</tbody></table>
+</div>
+<h3>B&nbsp;&nbsp;Full quality table against the original</h3>
+<div class="tbl t5 sm" style="break-inside:avoid">
+<div class="cap"><b>Table A2:</b> System-1 accuracy of every build: correct answers with logits / <code>head.bin</code> for yes/no (65) and multiple choice (57); <code>head_score.bin</code> exact · ±1 for severity (50). GB = 10<sup>9</sup> bytes. Comp. = System-1 composite. Flips = % of the 172 questions whose decision differs from the original, logits read / head read. Last column: smallest McNemar <i>p</i> against the original, with the change in correct answers and its mode. Takeaway: no build differs significantly from the original; flip rates separate the precisions.</div>
+<div class="sort">First row: the original model, as reference. Other rows sorted by the composite, highest first; ties: smaller file first.</div>
+<div class="rule"><span><span class="sw" style="background:var(--ok)"></span>no significant change vs original</span><span><span class="sw" style="background:var(--pre)"></span>consistent but not significant loss, or unstable</span><span><span class="sw" style="background:#fff"></span>original model (reference)</span><span><span class="sw" style="background:var(--nf)"></span>GB cell: does not fit the browser</span></div>
+<table>
+<thead><tr><thead><tr><th class="k">#</th><th>Runtime · build</th><th class="n">GB</th><th class="n">yes/no l / h</th><th class="n">mult. choice l / h</th><th class="n">severity ex · ±1</th><th class="n">Comp.</th><th class="n">Flips l / h (%)</th><th>McNemar vs original</th></tr></thead>
+<tbody>
+<tr class="w"><td class="k">–</td><td><b>Original (PyTorch bf16)</b></td><td class="n">—</td><td class="n">54 / 54</td><td class="n">39 / 46</td><td class="n">26 · 47</td><td class="n">0.859</td><td class="n">—</td><td>reference</td></tr>
+<tr class="g"><td class="k">1</td><td><span class="rt"><svg class="lg"><use href="#lg-edge" width="100%" height="100%"/></svg>decode-only q4f16</span></td><td class="n">2.73</td><td class="n">53 / 54</td><td class="n">38 / 46</td><td class="n">24 · 50</td><td class="n">0.879</td><td class="n">12.8 / 12.2</td><td><i>p</i>=0.25 (−3, severity)</td></tr>
+<tr class="g"><td class="k">2</td><td><span class="rt"><svg class="lg"><use href="#lg-mlc" width="100%" height="100%"/></svg>WebLLM q4f32_1</span></td><td class="n">2.37</td><td class="n">54 / 54</td><td class="n">38 / 45</td><td class="n">22 · 50</td><td class="n">0.873</td><td class="n">13.4 / 14.0</td><td><i>p</i>=0.25 (+3, severity)</td></tr>
+<tr class="g"><td class="k">3</td><td><span class="rt"><svg class="lg"><use href="#lg-genai" width="100%" height="100%"/></svg>GenAI int4 (block 32)</span></td><td class="n">2.44</td><td class="n">55 / 54</td><td class="n">38 / 48</td><td class="n">26 · 47</td><td class="n">0.871</td><td class="n">11.6 / 14.5</td><td><i>p</i>=0.73 (+2, mult. choice)</td></tr>
+<tr class="g"><td class="k">4</td><td><span class="rt"><svg class="lg"><use href="#lg-edge" width="100%" height="100%"/></svg>decode-only q4</span></td><td class="n">3.03</td><td class="n">55 / 54</td><td class="n">39 / 48</td><td class="n">26 · 47</td><td class="n">0.871</td><td class="n">10.5 / 14.5</td><td><i>p</i>=0.50 (−2, severity)</td></tr>
+<tr class="g"><td class="k">5</td><td><span class="rt"><svg class="lg"><use href="#lg-tjs" width="100%" height="100%"/></svg>transformers.js q4</span></td><td class="n">3.04</td><td class="n">55 / 54</td><td class="n">39 / 48</td><td class="n">26 · 47</td><td class="n">0.871</td><td class="n">10.5 / 14.5</td><td><i>p</i>=0.73 (+2, mult. choice)</td></tr>
+<tr class="g"><td class="k">6</td><td><span class="rt"><svg class="lg"><use href="#lg-tjs" width="100%" height="100%"/></svg>transformers.js q4f16</span></td><td class="n">2.73</td><td class="n">55 / 54</td><td class="n">38 / 46</td><td class="n">26 · 48</td><td class="n">0.866</td><td class="n">9.9 / 14.5</td><td><i>p</i>=1</td></tr>
+<tr class="g"><td class="k">7</td><td><span class="rt"><svg class="lg"><use href="#lg-edge" width="100%" height="100%"/></svg>decode-only fp16</span></td><td class="n cnf">8.42</td><td class="n">54 / 54</td><td class="n">39 / 47</td><td class="n">27 · 47</td><td class="n">0.865</td><td class="n">1.2 / 1.2</td><td><i>p</i>=1</td></tr>
+<tr class="g"><td class="k">8</td><td><span class="rt"><svg class="lg"><use href="#lg-edge" width="100%" height="100%"/></svg>decode-only fp32</span></td><td class="n cnf">19.37</td><td class="n">54 / 54</td><td class="n">39 / 47</td><td class="n">26 · 47</td><td class="n">0.865</td><td class="n">1.2 / 0.6</td><td><i>p</i>=1</td></tr>
+<tr class="g"><td class="k">9</td><td><span class="rt"><svg class="lg"><use href="#lg-edge" width="100%" height="100%"/></svg>decode-only bnb4-nf4</span></td><td class="n">2.73</td><td class="n">55 / 55</td><td class="n">44 / 47</td><td class="n">30 · 46</td><td class="n">0.864</td><td class="n">6.4 / 12.2</td><td><i>p</i>=0.13 (+5, mult. choice)</td></tr>
+<tr class="g"><td class="k">10</td><td><span class="rt"><svg class="lg"><use href="#lg-tjs" width="100%" height="100%"/></svg>transformers.js fp16</span></td><td class="n cnf">8.42</td><td class="n">54 / 54</td><td class="n">38 / 46</td><td class="n">26 · 47</td><td class="n">0.859</td><td class="n">0.6 / 2.3</td><td><i>p</i>=1</td></tr>
+<tr class="g"><td class="k">11</td><td><span class="rt"><svg class="lg"><use href="#lg-genai" width="100%" height="100%"/></svg>GenAI fp16</span></td><td class="n cnf">8.48</td><td class="n">54 / 54</td><td class="n">38 / 46</td><td class="n">26 · 47</td><td class="n">0.859</td><td class="n">0.6 / 2.3</td><td><i>p</i>=1</td></tr>
+<tr class="g"><td class="k">12</td><td><span class="rt"><svg class="lg"><use href="#lg-tjs" width="100%" height="100%"/></svg>transformers.js fp32</span></td><td class="n cnf">16.83</td><td class="n">54 / 54</td><td class="n">38 / 46</td><td class="n">26 · 47</td><td class="n">0.859</td><td class="n">0.6 / 2.3</td><td><i>p</i>=1</td></tr>
+<tr class="g"><td class="k">13</td><td><span class="rt"><svg class="lg"><use href="#lg-mlc" width="100%" height="100%"/></svg>WebLLM q4f16_1</span></td><td class="n">2.37</td><td class="n">52 / 56</td><td class="n">38 / 44</td><td class="n">25 · 47</td><td class="n">0.858</td><td class="n">10.5 / 19.8</td><td><i>p</i>=0.25 (−3, severity)</td></tr>
+<tr class="g"><td class="k">14</td><td><span class="rt"><svg class="lg"><use href="#lg-edge" width="100%" height="100%"/></svg>decode-only q8</span></td><td class="n cnf">4.91</td><td class="n">54 / 55</td><td class="n">40 / 44</td><td class="n">27 · 46</td><td class="n">0.846</td><td class="n">2.9 / 3.5</td><td><i>p</i>=0.50 (−2, mult. choice)</td></tr>
+<tr class="g"><td class="k">15</td><td><span class="rt"><svg class="lg"><use href="#lg-edge" width="100%" height="100%"/></svg>decode-only uint8</span></td><td class="n cnf">4.85</td><td class="n">55 / 51</td><td class="n">37 / 46</td><td class="n">22 · 47</td><td class="n">0.844</td><td class="n">8.7 / 14.0</td><td><i>p</i>=0.25 (−3, yes/no)</td></tr>
+<tr class="g"><td class="k">16</td><td><span class="rt"><svg class="lg"><use href="#lg-tjs" width="100%" height="100%"/></svg>transformers.js bnb4</span></td><td class="n">2.74</td><td class="n">55 / 53</td><td class="n"><b>44</b> / 46</td><td class="n">31 · 45</td><td class="n">0.841</td><td class="n">5.8 / 12.8</td><td><i>p</i>=0.062 (+5, mult. choice)</td></tr>
+<tr class="a"><td class="k">17</td><td><span class="rt"><svg class="lg"><use href="#lg-tjs" width="100%" height="100%"/></svg>transformers.js q8</span></td><td class="n cnf">4.22</td><td class="n">51 / 52</td><td class="n">40 / 43</td><td class="n">20 · 45</td><td class="n">0.818</td><td class="n">13.4 / 22.7</td><td><i>p</i>=0.13 (−4, severity)</td></tr>
+<tr class="a"><td class="k">18</td><td><span class="rt"><svg class="lg"><use href="#lg-tjs" width="100%" height="100%"/></svg>transformers.js uint8</span></td><td class="n cnf">4.22</td><td class="n">54 / 53</td><td class="n">39 / 39</td><td class="n">22 · 45</td><td class="n">0.800</td><td class="n">14.5 / 28.5</td><td><i>p</i>=0.13 (−4, severity)</td></tr>
+</tbody></table>
+</div>
+<h3>C&nbsp;&nbsp;Question format on real code</h3>
+<div class="tbl sm" style="break-inside:avoid">
+<div class="cap"><b>Table A3:</b> Question format on real code (real-code set, 161 JavaScript items, labels taken mechanically from CodeQL security tests and OWASP Juice Shop): AUROC of CT0's own reads with 95% cluster-bootstrap CI, original model, no training. Takeaway: one question per class beats one generic question for both reads.</div>
+<div class="sort">Rows sorted by AUROC, highest first.</div>
+<table>
+<thead><tr><th>Read</th><th>Question format</th><th class="n">AUROC [95% CI]</th></tr></thead>
+<tbody>
+<tr><td>CT0 logits</td><td>one question per class + max</td><td class="n">0.847 [0.763, 0.918]</td></tr>
+<tr><td>CT0 <code>head.bin</code></td><td>one question per class + max</td><td class="n">0.831 [0.747, 0.903]</td></tr>
+<tr><td>CT0 logits</td><td>generic question</td><td class="n">0.807 [0.718, 0.895]</td></tr>
+<tr><td>CT0 <code>head.bin</code></td><td>generic question</td><td class="n">0.764 [0.670, 0.855]</td></tr>
+</tbody></table>
+</div>
+</div>
+
+</body>
+</html>
