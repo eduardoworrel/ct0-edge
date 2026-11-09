@@ -40,7 +40,8 @@ pip install onnxruntime-genai==0.18.0 transformers==5.19.0 \
   numpy onnx onnx-ir==1.1.0 safetensors sentencepiece</pre></li>
 <li><pre>hf download aliasrobotics/alias3-micro-1026 \
   --revision 61c0e7100c052a252563ceb0711d15dc58bda2d0 --local-dir ./ct0</pre></li>
-<li><pre>G=https://raw.githubusercontent.com/eduardoworrel/ct0-edge/84f13f6ab60d3151a2f03ca2e18f9ed792e7b09f/docs/best-build/scripts
+<li><pre>C=https://raw.githubusercontent.com/eduardoworrel/ct0-edge
+G=$C/84f13f6ab60d3151a2f03ca2e18f9ed792e7b09f/docs/best-build/scripts
 curl -O $G/build_ct0.py</pre></li>
 <li><pre>python build_ct0.py -i ./ct0 -o ./genai-int4 -p int4 -e webgpu \
   -c ./cache --extra_options include_hidden_states=true exclude_mtp=true</pre></li>
@@ -64,7 +65,8 @@ curl -L -o $D/model_q4.onnx_data $R/onnx/model_q4.onnx_data
 for f in config.json tokenizer.json tokenizer_config.json; do
   curl -L -o ct0-artifacts/tok/$f $R/$f; done
 curl -L -o alias3-mlc/head.bin $R/heads/head.bin</pre></li>
-<li><pre>G=https://raw.githubusercontent.com/eduardoworrel/ct0-edge/84f13f6ab60d3151a2f03ca2e18f9ed792e7b09f/docs/best-build/scripts
+<li><pre>C=https://raw.githubusercontent.com/eduardoworrel/ct0-edge
+G=$C/84f13f6ab60d3151a2f03ca2e18f9ed792e7b09f/docs/best-build/scripts
 for f in three_modes.py sev_rubric.md generate_sev_cases.py \
          capture_sev_hiddens.py calibrate_score_v2.py; do
   curl -L -o ct0-artifacts/scripts/$f $G/$f; done</pre></li>
