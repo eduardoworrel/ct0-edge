@@ -7,8 +7,8 @@ Run **CT0** ([alias3-micro-1026](https://huggingface.co/aliasrobotics/alias3-mic
 
 ## Documents
 
-- *System-1 at the Edge: One-Pass Security Decisions of a 4B Model in the Browser on Four Runtimes*, technical report (November 2026): [PDF](docs/paper/system1-edge_en.pdf) · [HTML](docs/paper/system1-edge_en.html). Measures every published build against the original model on a 172-question decision test set.
-- *Best CT0 build for the extension, and the recipe to rebuild it*: [PDF](docs/best-build/01-best-model-and-recipe.pdf) · [HTML](docs/best-build/01-best-model-and-recipe.html). The recommended build (ONNX Runtime GenAI, int4, WebGPU), the recipes to rebuild it and `head_score.bin`, and how to use them with ct0-edge.
+- *System-1 at the Edge: One-Pass Security Decisions of a 4B Model in the Browser on Four Runtimes*, technical report (November 2026): [PDF](docs/paper/system1-edge_en.pdf) · [Markdown](docs/paper/system1-edge_en.md). Measures every published build against the original model on a 172-question decision test set.
+- *Best CT0 build for the extension, and the recipe to rebuild it*: [PDF](docs/best-build/01-best-model-and-recipe.pdf) · [Markdown](docs/best-build/01-best-model-and-recipe.md). The recommended build (ONNX Runtime GenAI, int4, WebGPU), the recipes to rebuild it and `head_score.bin`, and how to use them with ct0-edge.
 
 ## Citation
 
