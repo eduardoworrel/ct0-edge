@@ -1,5 +1,8 @@
 # ct0-edge
 
+> **This repository is archived.** It was the engine of the edge study (CT0 running in four browser runtimes) and of the Browser Immune System prototype described in the paper [arXiv:2611.15302](https://arxiv.org/abs/2611.15302) (Mayoral-Vilches and Worrel).
+> The browser line continues in [alias3-web](https://huggingface.co/aliasrobotics/alias3-web) by Alias Robotics. The general library for typed decisions moved to [s1s2](https://github.com/eduardoworrel/s1s2) (npm `@s1s2/web`).
+
 Run **CT0** ([alias3-micro-1026](https://huggingface.co/aliasrobotics/alias3-micro-1026), the security model by Alias Robotics) on the device, in the browser or in Node, behind one call: `CT0.load()`.
 
 ## Install
