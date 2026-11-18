@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 720 470" width="720" height="470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Recovered head vs logits, per mode" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+<defs><symbol id="lg-edge" viewBox="0 0 53.2 52" preserveAspectRatio="xMidYMid meet"><path fill="#545554" d="M40.5,9l8.7,16c-0.3,0.4-0.5,0.9-0.5,1.4c0,0.2,0,0.4,0.1,0.6l-11.4,7.8c-0.1-0.1-0.2-0.1-0.3-0.2L40.5,9 L40.5,9"/><path fill="#3E3E3D" d="M37.1,38.4c0.7-0.3,1.2-1.1,1.2-1.9c0-0.2,0-0.4-0.1-0.5l10.4-7.1L38.1,47.1L37.1,38.4z"/><path fill="#4D4C4D" d="M34.5,37.9c0.3,0.3,0.7,0.5,1.1,0.6l1,8.9c-0.4,0.2-0.8,0.6-1,1l-21.5-2.1L34.5,37.9z"/><path fill="#5D5D5D" d="M15,20.1c0.3-0.1,0.6-0.2,0.8-0.3l18.3,15.9C34,35.9,34,36.2,34,36.5l0,0.1L13.5,45c-0.3-0.4-0.8-0.8-1.3-0.9 L15,20.1z"/><path fill="#4D4C4D" d="M4.5,24.9c0-0.1,0-0.3,0-0.4l8.6-5.1c0.2,0.2,0.4,0.3,0.6,0.4l-2.8,24l-7-17.3C4.2,26.1,4.5,25.6,4.5,24.9z"/><path fill="#3E3E3D" d="M14.2,15.9c-1,0.2-1.8,1-1.8,2.1l0,0.1l-7.6,4.5L16.6,5.7L14.2,15.9z"/><path fill="#545554" d="M37.6,6.9l-21.7,9.5c-0.1-0.1-0.2-0.1-0.2-0.2l2.8-11.8l0.1,0c0.8,0,1.4-0.4,1.8-1L37.6,6.9L37.6,6.9z"/><path fill="#717272" d="M38,8.3c0.3,0.3,0.6,0.6,1,0.7l-3.4,25.4c-0.2,0-0.4,0.1-0.6,0.2l-18.5-16c0-0.2,0.1-0.4,0.1-0.6 c0-0.1,0-0.3,0-0.4L38,8.3z"/><path fill="#FFFFFF" d="M50.8,24.2c-0.1,0-0.2,0-0.3,0L41.6,8c0.2-0.3,0.2-0.6,0.2-1c0-1.2-1-2.1-2.1-2.1c-0.6,0-1.2,0.3-1.5,0.7 L20.6,2c-0.1-1.1-1-1.9-2.1-1.9c-1.2,0-2.1,1-2.1,2.1c0,0.4,0.1,0.7,0.2,1L2.9,22.9c-0.2,0-0.4-0.1-0.6-0.1c-1.2,0-2.1,1-2.1,2.1 c0,1.2,1,2.1,2.1,2.1l0.1,0l7.4,18.3c-0.1,0.3-0.2,0.6-0.2,0.9c0,1.2,1,2.1,2.1,2.1c0.6,0,1.2-0.3,1.5-0.7l22.2,2.2 c0.2,0.9,1.1,1.6,2.1,1.6c1.2,0,2.1-1,2.1-2.1c0-0.5-0.2-1-0.5-1.4l11.2-19.5c0.1,0,0.2,0,0.4,0c1.2,0,2.1-1,2.1-2.1 C52.9,25.2,52,24.2,50.8,24.2z M38,8.3c0.3,0.3,0.6,0.6,1,0.7l-3.4,25.4c-0.2,0-0.4,0.1-0.6,0.2l-18.5-16c0-0.2,0.1-0.4,0.1-0.6 c0-0.1,0-0.3,0-0.4L38,8.3z M48.7,27l-11.4,7.8c-0.1-0.1-0.2-0.1-0.3-0.2L40.5,9l0,0l8.7,16c-0.3,0.4-0.5,0.9-0.5,1.4 C48.6,26.6,48.7,26.8,48.7,27z M14.2,15.9c-1,0.2-1.8,1-1.8,2.1l0,0.1l-7.6,4.5L16.6,5.7L14.2,15.9z M15,20.1 c0.3-0.1,0.6-0.2,0.8-0.3l18.3,15.9C34,35.9,34,36.2,34,36.5l0,0.1L13.5,45c-0.3-0.4-0.8-0.8-1.3-0.9L15,20.1z M34.5,37.9 c0.3,0.3,0.7,0.5,1.1,0.6l1,8.9c-0.4,0.2-0.8,0.6-1,1l-21.5-2.1L34.5,37.9z M37.1,38.4c0.7-0.3,1.2-1.1,1.2-1.9 c0-0.2,0-0.4-0.1-0.5l10.4-7.1L38.1,47.1L37.1,38.4z M37.6,6.9l-21.7,9.5c-0.1-0.1-0.2-0.1-0.2-0.2l2.8-11.8l0.1,0 c0.8,0,1.4-0.4,1.8-1L37.6,6.9L37.6,6.9z M4.5,24.9c0-0.1,0-0.3,0-0.4l8.6-5.1c0.2,0.2,0.4,0.3,0.6,0.4l-2.8,24l-7-17.3 C4.2,26.1,4.5,25.6,4.5,24.9z"/></symbol></defs>
+<rect width="720" height="470" fill="#fff"/>
+<style>svg text{paint-order:stroke;stroke:#faf9f5;stroke-width:3px;stroke-linejoin:round}</style>
+<rect x="0.5" y="0.5" width="719" height="469" fill="#faf9f5" stroke="#dedbd2" rx="3"/>
+<text x="22.0" y="30.0" font-size="17" text-anchor="start" fill="#1b1d21" font-weight="bold" >Recovered head vs logits, per mode</text>
+<text x="698.0" y="30.0" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >Original model (PyTorch bf16)</text>
+<rect x="22.0" y="50.0" width="16.0" height="16.0" fill="#0072B2" rx="3"/>
+<text x="46.0" y="63.0" font-size="13.5" text-anchor="start" fill="#1b1d21" font-weight="normal" >logits readout</text>
+<rect x="172.0" y="50.0" width="16.0" height="16.0" fill="#9ccbea" rx="3"/>
+<text x="196.0" y="63.0" font-size="13.5" text-anchor="start" fill="#1b1d21" font-weight="normal" >gain from the head (where the head scores higher)</text>
+<line x1="86.0" y1="389.6" x2="698.0" y2="389.6" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="394.6" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >0</text>
+<line x1="86.0" y1="337.3" x2="698.0" y2="337.3" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="342.3" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >20</text>
+<line x1="86.0" y1="285.0" x2="698.0" y2="285.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="290.0" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >40</text>
+<line x1="86.0" y1="232.6" x2="698.0" y2="232.6" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="237.6" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >60</text>
+<line x1="86.0" y1="180.3" x2="698.0" y2="180.3" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="185.3" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >80</text>
+<line x1="86.0" y1="128.0" x2="698.0" y2="128.0" stroke="#e3e5e8" stroke-width="0.8" />
+<text x="78.0" y="133.0" font-size="14" text-anchor="end" fill="#5b616b" font-weight="normal" >100</text>
+<line x1="86.0" y1="389.6" x2="698.0" y2="389.6" stroke="#1b1d21" stroke-width="1.2" />
+<line x1="86.0" y1="122.0" x2="86.0" y2="389.6" stroke="#8a9099" stroke-width="1" />
+<text x="24.0" y="258.8" font-size="14.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" transform="rotate(-90 24 258.8)">ACCURACY (%)</text>
+<rect x="114.5" y="206.5" width="96.0" height="183.1" fill="#0072B2" />
+<rect x="114.5" y="143.7" width="96.0" height="62.8" fill="#9ccbea" />
+<text x="162.5" y="123.7" font-size="15.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >94%</text>
+<text x="162.5" y="137.7" font-size="11" text-anchor="middle" fill="#5b616b" font-weight="normal" font-style="italic">with the head (47/50)</text>
+<text x="162.5" y="224.5" font-size="14" text-anchor="middle" fill="#fff" font-weight="bold" style="stroke:none">70%</text>
+<text x="162.5" y="238.5" font-size="11" text-anchor="middle" fill="#fff" font-weight="normal" style="stroke:none;font-style:italic">logits 35/50</text>
+<use href="#lg-edge" x="152.5" y="395.6" width="20" height="20"/>
+<text x="162.5" y="433.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >severity ±1</text>
+<text x="162.5" y="449.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="normal" >head_score</text>
+<rect x="267.5" y="172.3" width="96.0" height="217.3" fill="#0072B2" />
+<text x="315.5" y="152.3" font-size="15.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >83%</text>
+<text x="315.5" y="166.3" font-size="11" text-anchor="middle" fill="#5b616b" font-weight="normal" font-style="italic">head = logits (54/65)</text>
+<text x="315.5" y="190.3" font-size="14" text-anchor="middle" fill="#fff" font-weight="bold" style="stroke:none">83%</text>
+<text x="315.5" y="204.3" font-size="11" text-anchor="middle" fill="#fff" font-weight="normal" style="stroke:none;font-style:italic">logits 54/65</text>
+<use href="#lg-edge" x="305.5" y="395.6" width="20" height="20"/>
+<text x="315.5" y="433.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >yes/no</text>
+<text x="315.5" y="449.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="normal" >head.bin</text>
+<rect x="420.5" y="210.6" width="96.0" height="179.0" fill="#0072B2" />
+<rect x="420.5" y="178.5" width="96.0" height="32.1" fill="#9ccbea" />
+<text x="468.5" y="158.5" font-size="15.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >81%</text>
+<text x="468.5" y="172.5" font-size="11" text-anchor="middle" fill="#5b616b" font-weight="normal" font-style="italic">with the head (46/57)</text>
+<text x="468.5" y="228.6" font-size="14" text-anchor="middle" fill="#fff" font-weight="bold" style="stroke:none">68%</text>
+<text x="468.5" y="242.6" font-size="11" text-anchor="middle" fill="#fff" font-weight="normal" style="stroke:none;font-style:italic">logits 39/57</text>
+<use href="#lg-edge" x="458.5" y="395.6" width="20" height="20"/>
+<text x="468.5" y="433.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >multiple choice</text>
+<text x="468.5" y="449.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="normal" >head.bin</text>
+<rect x="573.5" y="285.0" width="96.0" height="104.6" fill="#0072B2" />
+<rect x="573.5" y="253.6" width="96.0" height="31.4" fill="#9ccbea" />
+<text x="621.5" y="233.6" font-size="15.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >52%</text>
+<text x="621.5" y="247.6" font-size="11" text-anchor="middle" fill="#5b616b" font-weight="normal" font-style="italic">with the head (26/50)</text>
+<text x="621.5" y="303.0" font-size="14" text-anchor="middle" fill="#fff" font-weight="bold" style="stroke:none">40%</text>
+<text x="621.5" y="317.0" font-size="11" text-anchor="middle" fill="#fff" font-weight="normal" style="stroke:none;font-style:italic">logits 20/50</text>
+<use href="#lg-edge" x="611.5" y="395.6" width="20" height="20"/>
+<text x="621.5" y="433.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="bold" >severity exact</text>
+<text x="621.5" y="449.6" font-size="13.5" text-anchor="middle" fill="#1b1d21" font-weight="normal" >head_score</text>
+</svg>
