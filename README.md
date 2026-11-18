@@ -5,6 +5,42 @@
 
 Run **CT0** ([alias3-micro-1026](https://huggingface.co/aliasrobotics/alias3-micro-1026), the security model by Alias Robotics) on the device, in the browser or in Node, behind one call: `CT0.load()`.
 
+## Documents
+
+- *System-1 at the Edge: One-Pass Security Decisions of a 4B Model in the Browser on Four Runtimes*, technical report (November 2026): [PDF](docs/paper/system1-edge_en.pdf) · [HTML](docs/paper/system1-edge_en.html). Measures every published build against the original model on a 172-question decision test set.
+- *Best CT0 build for the extension, and the recipe to rebuild it*: [PDF](docs/best-build/01-best-model-and-recipe.pdf) · [HTML](docs/best-build/01-best-model-and-recipe.html). The recommended build (ONNX Runtime GenAI, int4, WebGPU), the recipes to rebuild it and `head_score.bin`, and how to use them with ct0-edge.
+
+## Citation
+
+```bibtex
+@misc{mayoralvilches2026bis,
+  title         = {Browser Immune System ({BIS}): Innate and Adaptive Threat Detection in the Browser with a Cybersecurity Transformer},
+  author        = {Mayoral-Vilches, V{\'\i}ctor and Worrel, Eduardo},
+  year          = {2026},
+  eprint        = {2611.15302},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CR},
+  doi           = {10.48550/arXiv.2611.15302}
+}
+
+@article{ct0_2026,
+  title   = {{CT0}: Cybersecurity Transformer},
+  author  = {Mayoral-Vilches, V{\'i}ctor and {Alias Robotics}},
+  journal = {arXiv preprint arXiv:2610.16550},
+  year    = {2026},
+  url     = {https://arxiv.org/abs/2610.16550}
+}
+
+@techreport{worrel2026system1edge,
+  title       = {System-1 at the Edge: One-Pass Security Decisions of a 4B Model in the Browser on Four Runtimes},
+  author      = {Worrel, Eduardo},
+  institution = {ct0-edge},
+  type        = {Technical report},
+  year        = {2026},
+  url         = {https://github.com/eduardoworrel/ct0-edge/blob/main/docs/paper/system1-edge_en.pdf}
+}
+```
+
 ## Install
 
 ```bash
@@ -248,32 +284,6 @@ const be = await createWebllm(webllm, { modelId: "alias3-micro-1026-q4f16_1", mo
 | `webllm` q4f16_1 (`mlc: { build: "q4f16_1" }`) | [eduardoworrel/alias3-micro-1026-MLC-q4f16_1](https://huggingface.co/eduardoworrel/alias3-micro-1026-MLC-q4f16_1) |
 
 Every repo (ONNX and MLC) includes the heads: `heads/head.bin` (yes/no, multiple choice) and `heads/head_score.bin` (severity).
-
-## Documents
-
-- *System-1 at the Edge: One-Pass Security Decisions of a 4B Model in the Browser on Four Runtimes*, technical report (November 2026): [PDF](docs/paper/system1-edge_en.pdf) · [HTML](docs/paper/system1-edge_en.html). Measures every published build against the original model on a 172-question decision test set.
-- *Best CT0 build for the extension, and the recipe to rebuild it*: [PDF](docs/best-build/01-best-model-and-recipe.pdf) · [HTML](docs/best-build/01-best-model-and-recipe.html). The recommended build (ONNX Runtime GenAI, int4, WebGPU), the recipes to rebuild it and `head_score.bin`, and how to use them with ct0-edge.
-
-## Citation
-
-```bibtex
-@article{ct0_2026,
-  title   = {{CT0}: Cybersecurity Transformer},
-  author  = {Mayoral-Vilches, V{\'i}ctor and {Alias Robotics}},
-  journal = {arXiv preprint arXiv:2610.16550},
-  year    = {2026},
-  url     = {https://arxiv.org/abs/2610.16550}
-}
-
-@techreport{worrel2026system1edge,
-  title       = {System-1 at the Edge: One-Pass Security Decisions of a 4B Model in the Browser on Four Runtimes},
-  author      = {Worrel, Eduardo},
-  institution = {ct0-edge},
-  type        = {Technical report},
-  year        = {2026},
-  url         = {https://github.com/eduardoworrel/ct0-edge/blob/main/docs/paper/system1-edge_en.pdf}
-}
-```
 
 ## License
 
